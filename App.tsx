@@ -1,45 +1,30 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
+ * App — Entry point
+ * Providers only, no logic. Order matters: GestureHandlerRootView must
+ * wrap NavigationContainer (per react-native-gesture-handler docs), and
+ * SafeAreaProvider must be the outermost provider so safe-area insets
+ * are available everywhere.
  *
  * @format
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { RootNavigator } from '@/navigation/RootNavigator';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={rootStyle}>
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" />
+        <RootNavigator />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
+const rootStyle = { flex: 1 } as const;
 
 export default App;
