@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;inset:0;overflow:hidden;background:radial-gradient(125% 85% at 50% 16%, #16231e 0%, #0d1311 46%, #060908 100%);">
+  <!-- ground plane -->
+  <div style="position:absolute;left:0;right:0;bottom:0;height:40%;background:linear-gradient(180deg, #0b110e 0%, #050706 100%);"></div>
+  <div style="position:absolute;left:0;right:0;bottom:40%;height:1px;background:rgba(130,160,138,0.10);"></div>
+  <!-- faint range lines -->
+  <div style="position:absolute;left:50%;bottom:0;width:74%;height:40%;transform:translateX(-50%);background:repeating-linear-gradient(90deg, transparent 0 23%, rgba(120,150,130,0.05) 23% 23.4%);"></div>
+  <!-- key spotlight -->
+  <div style="position:absolute;left:50%;top:4%;width:64%;height:74%;transform:translateX(-50%);background:radial-gradient(50% 50% at 50% 38%, rgba(150,175,150,0.11), transparent 70%);"></div>
+
+  <!-- silhouetted golfer, top of backswing -->
+  <div style="position:absolute;left:50%;bottom:9%;width:174px;height:300px;transform:translateX(-50%);filter:blur(1.2px);opacity:0.95;">
+    <!-- club shaft -->
+    <div style="position:absolute;left:120px;top:-58px;width:7px;height:178px;border-radius:4px;background:rgba(176,198,184,0.15);transform:rotate(56deg);transform-origin:bottom center;"></div>
+    <!-- back leg -->
+    <div style="position:absolute;left:84px;top:170px;width:28px;height:132px;border-radius:14px;background:#05100c;transform:rotate(10deg);transform-origin:top center;box-shadow:inset 2px 0 0 rgba(150,180,160,0.05);"></div>
+    <!-- front leg -->
+    <div style="position:absolute;left:60px;top:170px;width:28px;height:132px;border-radius:14px;background:#040d0a;transform:rotate(-13deg);transform-origin:top center;"></div>
+    <!-- hips -->
+    <div style="position:absolute;left:56px;top:150px;width:70px;height:48px;border-radius:24px;background:#05100c;"></div>
+    <!-- torso (coiled) -->
+    <div style="position:absolute;left:60px;top:58px;width:58px;height:104px;border-radius:27px;background:#06120d;transform:rotate(-8deg);transform-origin:bottom center;box-shadow:inset 3px 0 0 rgba(150,180,160,0.06);"></div>
+    <!-- raised arms -->
+    <div style="position:absolute;left:104px;top:6px;width:25px;height:112px;border-radius:13px;background:#05100c;transform:rotate(42deg);transform-origin:bottom center;"></div>
+    <!-- head -->
+    <div style="position:absolute;left:86px;top:28px;width:35px;height:35px;border-radius:50%;background:#06120d;transform:rotate(7deg);"></div>
+  </div>
+
+  <!-- live-camera cool tint -->
+  <sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(70,120,170,0.16), rgba(20,40,60,0.10));mix-blend-mode:screen;"></div>
+  </sc-if>
+
+  <!-- vignette -->
+  <div style="position:absolute;inset:0;background:radial-gradient(125% 100% at 50% 46%, transparent 52%, rgba(0,0,0,0.58) 100%);"></div>
+  <!-- grain -->
+  <div style="position:absolute;inset:0;opacity:0.05;mix-blend-mode:overlay;background-image:radial-gradient(rgba(255,255,255,0.7) 0.5px, transparent 0.6px);background-size:3px 3px;"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:393,&quot;height&quot;:520},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dusk&quot;,&quot;live&quot;],&quot;default&quot;:&quot;dusk&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { isLive: (this.props.tone || 'dusk') === 'live' };
+  }
+}
+</script>
+</body>
+</html>

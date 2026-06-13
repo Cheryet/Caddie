@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#0E0E10;background-image:radial-gradient(120% 90% at 50% 0%, #161618 0%, #0c0c0e 70%);padding:60px 64px 96px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;">
+
+  <!-- Board header -->
+  <div style="max-width:1480px;margin:0 auto 56px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+    <div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <img src="app-icon/caddie-icon-1024.png" alt="Caddie app icon" style="width:40px;height:40px;border-radius:9px;display:block;" />
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.5px;color:#F0EDE8;">Caddie</div>
+        <div style="font-size:13px;font-weight:600;letter-spacing:0.3px;color:#C9A84C;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);padding:3px 9px;border-radius:6px;">App Icon</div>
+      </div>
+      <div style="margin-top:10px;font-size:14px;color:#8A8580;max-width:640px;line-height:20px;">Built to Apple's app-icon guidelines — square 1024&times;1024 master, fully opaque, no pre-applied corners, one recognizable mark, legible to the smallest size, with Default / Dark / Tinted variants for iOS 18.</div>
+    </div>
+    <div style="display:flex;gap:28px;">
+      <div><div style="font-family:'SF Mono','Courier New',monospace;font-size:24px;font-weight:700;letter-spacing:-1px;color:#F0EDE8;">1024</div><div style="font-size:11px;letter-spacing:0.6px;color:#5A5652;text-transform:uppercase;font-weight:600;margin-top:2px;">Master px</div></div>
+      <div><div style="font-family:'SF Mono','Courier New',monospace;font-size:24px;font-weight:700;letter-spacing:-1px;color:#F0EDE8;">3</div><div style="font-size:11px;letter-spacing:0.6px;color:#5A5652;text-transform:uppercase;font-weight:600;margin-top:2px;">Variants</div></div>
+      <div><div style="font-family:'SF Mono','Courier New',monospace;font-size:24px;font-weight:700;letter-spacing:-1px;color:#C9A84C;">#C9A84C</div><div style="font-size:11px;letter-spacing:0.6px;color:#5A5652;text-transform:uppercase;font-weight:600;margin-top:2px;">Accent</div></div>
+    </div>
+  </div>
+
+  <div style="max-width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:64px;">
+
+    <!-- ============ HERO ============ -->
+    <div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8A8580;">01 — The mark</div>
+        <div style="flex:1;height:1px;background:#1F1F1F;"></div>
+        <div style="font-size:12px;color:#5A5652;">Golf flagstick · single focal point · no text</div>
+      </div>
+
+      <div style="display:flex;gap:48px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+          <img src="app-icon/caddie-icon-1024.png" alt="Caddie icon, masked" style="width:280px;height:280px;border-radius:62.6px;box-shadow:0 30px 70px -24px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04);display:block;" />
+          <div style="font-size:13px;color:#8A8580;">Home Screen preview · masked</div>
+        </div>
+
+        <div style="flex:1;min-width:300px;max-width:560px;display:flex;flex-direction:column;gap:14px;">
+          <div style="font-size:21px;font-weight:600;letter-spacing:-0.3px;color:#F0EDE8;line-height:1.3;">A premium tile, a single confident mark.</div>
+          <div style="font-size:15px;line-height:23px;color:#8A8580;">The flagstick — pin, pennant and holed ball — is Caddie's existing brand mark, rendered bold and centered with generous breathing room so it survives the system's squircle crop and reads instantly on a crowded Home Screen. Metallic gold tile, near-black mark: the same lockup the app uses in its header and welcome screen, so the icon and the product feel like one thing.</div>
+          <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:999px;background:#141414;border:1px solid #1F1F1F;font-size:13px;color:#A8A39C;"><span style="width:14px;height:14px;border-radius:4px;background:#C9A84C;"></span>Tile #C9A84C</div>
+            <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:999px;background:#141414;border:1px solid #1F1F1F;font-size:13px;color:#A8A39C;"><span style="width:14px;height:14px;border-radius:4px;background:#0A0A0A;border:1px solid #2A2A2A;"></span>Mark #0A0A0A</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ VARIANTS ============ -->
+    <div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8A8580;">02 — iOS 18 appearances</div>
+        <div style="flex:1;height:1px;background:#1F1F1F;"></div>
+        <div style="font-size:12px;color:#5A5652;">Default · Dark · Tinted</div>
+      </div>
+
+      <div style="display:flex;gap:40px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <img src="app-icon/caddie-icon-1024.png" alt="Default variant" style="width:172px;height:172px;border-radius:38.5px;box-shadow:0 16px 40px -16px rgba(0,0,0,0.8);display:block;" />
+          <div style="text-align:center;"><div style="font-size:14px;font-weight:600;color:#E6E2DC;">Default</div><div style="font-size:12px;color:#7A7A7E;margin-top:2px;">Gold tile · dark mark</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <img src="app-icon/caddie-icon-dark-1024.png" alt="Dark variant" style="width:172px;height:172px;border-radius:38.5px;box-shadow:0 16px 40px -16px rgba(0,0,0,0.8);display:block;" />
+          <div style="text-align:center;"><div style="font-size:14px;font-weight:600;color:#E6E2DC;">Dark</div><div style="font-size:12px;color:#7A7A7E;margin-top:2px;">Black tile · gold mark</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <img src="app-icon/caddie-icon-tinted-1024.png" alt="Tinted variant source" style="width:172px;height:172px;border-radius:38.5px;box-shadow:0 16px 40px -16px rgba(0,0,0,0.8);display:block;" />
+          <div style="text-align:center;"><div style="font-size:14px;font-weight:600;color:#E6E2DC;">Tinted</div><div style="font-size:12px;color:#7A7A7E;margin-top:2px;">Grayscale source · system tints</div></div>
+        </div>
+
+        <div style="flex:1;min-width:240px;display:flex;align-items:center;">
+          <div style="display:flex;gap:10px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid #1F1F1F;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8580" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="0.5" fill="#8A8580"/></svg>
+            <div style="font-size:12.5px;line-height:18px;color:#8A8580;">iOS 18 asks for three appearances from one design. Caddie's gold/black brand inverts cleanly into a Dark appearance, and the mark is simple enough to read as a single-color Tinted glyph — no redraw, same silhouette across all three.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LEGIBILITY ============ -->
+    <div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8A8580;">03 — Legible at every size</div>
+        <div style="flex:1;height:1px;background:#1F1F1F;"></div>
+        <div style="font-size:12px;color:#5A5652;">Same art, downscaled — no detail to lose</div>
+      </div>
+
+      <div style="display:flex;gap:36px;align-items:flex-end;flex-wrap:wrap;padding:28px 28px 24px;border-radius:18px;background:#0A0A0A;border:1px solid #1F1F1F;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><img src="app-icon/caddie-icon-1024.png" style="width:120px;height:120px;border-radius:26.8px;display:block;" /><div style="font-size:11px;color:#5A5652;font-family:'SF Mono','Courier New',monospace;">120</div></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><img src="app-icon/caddie-icon-1024.png" style="width:87px;height:87px;border-radius:19.5px;display:block;" /><div style="font-size:11px;color:#5A5652;font-family:'SF Mono','Courier New',monospace;">87</div></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><img src="app-icon/caddie-icon-1024.png" style="width:60px;height:60px;border-radius:13.4px;display:block;" /><div style="font-size:11px;color:#5A5652;font-family:'SF Mono','Courier New',monospace;">60</div></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><img src="app-icon/caddie-icon-1024.png" style="width:40px;height:40px;border-radius:9px;display:block;" /><div style="font-size:11px;color:#5A5652;font-family:'SF Mono','Courier New',monospace;">40</div></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;"><img src="app-icon/caddie-icon-1024.png" style="width:29px;height:29px;border-radius:6.5px;display:block;" /><div style="font-size:11px;color:#5A5652;font-family:'SF Mono','Courier New',monospace;">29</div></div>
+        <div style="flex:1;min-width:200px;font-size:12.5px;line-height:18px;color:#8A8580;align-self:center;">From App Store down to a Settings row, the silhouette holds. The mark uses thick strokes and a single solid shape — nothing thin enough to disappear at 29&nbsp;px.</div>
+      </div>
+    </div>
+
+    <!-- ============ ON DEVICE ============ -->
+    <div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8A8580;">04 — On the Home Screen</div>
+        <div style="flex:1;height:1px;background:#1F1F1F;"></div>
+        <div style="font-size:12px;color:#5A5652;">Recognition among neighbours</div>
+      </div>
+
+      <div style="display:flex;gap:40px;flex-wrap:wrap;">
+        <!-- light wallpaper -->
+        <div style="width:300px;border-radius:34px;padding:30px 26px;background:linear-gradient(160deg,#C9CBD2,#9DA0AB 60%,#7E8290);box-shadow:0 24px 60px -24px rgba(0,0,0,0.7);">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px 16px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><img src="app-icon/caddie-icon-1024.png" style="width:54px;height:54px;border-radius:12px;display:block;box-shadow:0 4px 10px rgba(0,0,0,0.25);" /><div style="font-size:10px;color:#1A1A1A;font-weight:500;">Caddie</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#5B8DEF,#3D6FD8);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#3ED07B,#1FA85C);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#FF7A59,#E2502E);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#EFEFEF,#CFCFCF);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#B06BE8,#8442C8);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#3A3A3C,#1C1C1E);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#FFD23F,#F2A93B);box-shadow:0 4px 10px rgba(0,0,0,0.25);"></div><div style="font-size:10px;color:#1A1A1A;font-weight:500;opacity:0.6;">&nbsp;</div></div>
+          </div>
+          <div style="text-align:center;margin-top:20px;font-size:11px;color:rgba(20,20,20,0.55);font-weight:600;">Light wallpaper</div>
+        </div>
+
+        <!-- dark wallpaper (uses dark variant) -->
+        <div style="width:300px;border-radius:34px;padding:30px 26px;background:linear-gradient(160deg,#1A1A1E,#0A0A0C 65%,#000);box-shadow:0 24px 60px -24px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(255,255,255,0.04);">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px 16px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><img src="app-icon/caddie-icon-dark-1024.png" style="width:54px;height:54px;border-radius:12px;display:block;box-shadow:0 4px 10px rgba(0,0,0,0.4);" /><div style="font-size:10px;color:#E6E2DC;font-weight:500;">Caddie</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#5B8DEF,#3D6FD8);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#3ED07B,#1FA85C);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#FF7A59,#E2502E);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#2C2C2E,#1C1C1E);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#B06BE8,#8442C8);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#4A4A4C,#2A2A2C);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(160deg,#FFD23F,#F2A93B);"></div><div style="font-size:10px;opacity:0;">&nbsp;</div></div>
+          </div>
+          <div style="text-align:center;margin-top:20px;font-size:11px;color:rgba(240,237,232,0.5);font-weight:600;">Dark wallpaper · Dark variant</div>
+        </div>
+
+        <div style="flex:1;min-width:220px;display:flex;align-items:center;">
+          <div style="display:flex;gap:10px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid #1F1F1F;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8580" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="0.5" fill="#8A8580"/></svg>
+            <div style="font-size:12.5px;line-height:18px;color:#8A8580;">The warm gold reads as distinct next to the usual blue/green/red app field, and the Dark variant keeps the same gold mark glowing on black so recognition never depends on the wallpaper.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MASTER + COMPLIANCE ============ -->
+    <div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8A8580;">05 — Delivery &amp; compliance</div>
+        <div style="flex:1;height:1px;background:#1F1F1F;"></div>
+        <div style="font-size:12px;color:#5A5652;">1024 master · square · opaque</div>
+      </div>
+
+      <div style="display:flex;gap:48px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div style="position:relative;">
+            <img src="app-icon/caddie-icon-1024.png" alt="Unmasked 1024 master" style="width:240px;height:240px;border-radius:4px;display:block;box-shadow:0 16px 40px -16px rgba(0,0,0,0.8);" />
+            <div style="position:absolute;inset:0;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);pointer-events:none;"></div>
+          </div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#E6E2DC;">caddie-icon-1024.png</div><div style="font-size:12px;color:#7A7A7E;margin-top:2px;">Square corners — system applies the mask</div></div>
+        </div>
+
+        <div style="flex:1;min-width:320px;max-width:620px;">
+          <div style="display:flex;flex-direction:column;gap:0;background:#0A0A0A;border:1px solid #1F1F1F;border-radius:16px;overflow:hidden;">
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">Square 1024&times;1024 master</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">Single high-res source; smaller sizes downscale from it.</div></div></div>
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-top:1px solid #1F1F1F;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">Fully opaque, no alpha</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">The tile fills every pixel — no transparency anywhere.</div></div></div>
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-top:1px solid #1F1F1F;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">No pre-applied corner radius or shadow</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">Corners are square; iOS adds the squircle mask and shadow.</div></div></div>
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-top:1px solid #1F1F1F;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">One focal mark · no words</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">Just the flagstick — no app name, UI, or photography.</div></div></div>
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-top:1px solid #1F1F1F;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">Safe margins from the edges</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">~28% padding so the mask crop never clips the mark.</div></div></div>
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-top:1px solid #1F1F1F;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">Default / Dark / Tinted supplied</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">Three appearances for iOS 18, one consistent silhouette.</div></div></div>
+            <div data-row style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-top:1px solid #1F1F1F;"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,0.14);border:1px solid rgba(201,168,76,0.4);display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><div style="font-size:14px;font-weight:600;color:#F0EDE8;">Legible at 29&nbsp;px</div><div style="font-size:12.5px;color:#8A8580;margin-top:2px;">Bold strokes, solid shapes, high contrast at any scale.</div></div></div>
+          </div>
+          <div style="font-size:12px;line-height:18px;color:#5A5652;margin-top:14px;">Files in <span style="font-family:'SF Mono','Courier New',monospace;color:#8A8580;">/app-icon</span>: <span style="color:#8A8580;">caddie-icon-1024.png</span>, <span style="color:#8A8580;">caddie-icon-dark-1024.png</span>, <span style="color:#8A8580;">caddie-icon-tinted-1024.png</span> — drop into an iOS App Icon set (Single Size) in Xcode's asset catalog.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

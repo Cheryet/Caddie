@@ -1,0 +1,9 @@
+node_modules/
+ios/Pods/
+ios/build/
+coverage/
+*.lock
+package-lock.json
+.env
+.env.*
+Design/

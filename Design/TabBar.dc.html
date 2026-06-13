@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:83px;background:#111111;border-top:1px solid #1F1F1F;display:flex;align-items:flex-start;padding:9px 6px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;">
+  <button onClick="{{ home.pick }}" style="flex:1;height:54px;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding-top:3px;">
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="{{ home.col }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5.5 9.5V20h13V9.5"/></svg>
+    <sc-if value="{{ home.on }}" hint-placeholder-val="{{ true }}"><span style="font-size:10px;font-weight:600;letter-spacing:0.3px;color:#C9A84C;">Home</span></sc-if>
+  </button>
+  <button onClick="{{ lib.pick }}" style="flex:1;height:54px;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding-top:3px;">
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="{{ lib.col }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <sc-if value="{{ lib.on }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:600;letter-spacing:0.3px;color:#C9A84C;">Library</span></sc-if>
+  </button>
+  <div style="flex:1;display:flex;justify-content:center;align-items:flex-start;">
+    <button style="margin-top:-14px;width:56px;height:56px;border-radius:50%;background:#C9A84C;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -5px rgba(201,168,76,0.6);cursor:pointer;">
+      <svg width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#0A0A0A" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="#0A0A0A"/></svg>
+    </button>
+  </div>
+  <button onClick="{{ tempo.pick }}" style="flex:1;height:54px;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding-top:3px;">
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="{{ tempo.col }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18.5a8 8 0 1 1 16 0"/><line x1="12" y1="14" x2="16.5" y2="9"/><circle cx="12" cy="14" r="1.4" fill="{{ tempo.col }}" stroke="none"/></svg>
+    <sc-if value="{{ tempo.on }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:600;letter-spacing:0.3px;color:#C9A84C;">Tempo</span></sc-if>
+  </button>
+  <button onClick="{{ profile.pick }}" style="flex:1;height:54px;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding-top:3px;">
+    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="{{ profile.col }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6"/></svg>
+    <sc-if value="{{ profile.on }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:600;letter-spacing:0.3px;color:#C9A84C;">Profile</span></sc-if>
+  </button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:393,&quot;height&quot;:83},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;library&quot;,&quot;tempo&quot;,&quot;profile&quot;],&quot;default&quot;:&quot;home&quot;}}">
+class Component extends DCLogic {
+  state = { sel: null };
+  renderVals() {
+    const active = this.state.sel || this.props.active || 'home';
+    const mk = (id) => ({ on: active === id, col: active === id ? '#C9A84C' : '#5A5652', pick: () => this.setState({ sel: id }) });
+    return { home: mk('home'), lib: mk('library'), tempo: mk('tempo'), profile: mk('profile') };
+  }
+}
+</script>
+</body>
+</html>
