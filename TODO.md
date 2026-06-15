@@ -146,6 +146,53 @@ commit history when this phase is picked back up.
 
 ---
 
+## Physical-device verification — Phase 1.2 camera preview
+
+**Status:** Acceptance gap. Phase 1.2 shipped with the permission flow
+verified on iOS Simulator (request dialog fires, denied → Open Settings
+deep-link, no-device fallback renders for simulator's missing hardware).
+The remaining acceptance criterion — "Camera preview renders on device"
+— has not been exercised.
+
+**Why deferred:** Tester only has the iOS Simulator available right now;
+the simulator has no camera hardware, so `useCameraDevice('back')`
+returns `null` and the "No camera available" branch renders. This is
+expected and correct behaviour — the gap is verifying the *granted +
+device-present* branch displays a live preview.
+
+**Revisit when:** First time a physical iPhone is available — before
+Phase 1.3 (Video recording) begins, ideally. Phase 1.3 builds on top of
+the preview surface; if anything is wrong with the preview wiring we
+want to find out before adding capture UI on top.
+
+**What to verify:**
+1. `npx react-native run-ios --device "<iPhone name>"` (or via Xcode
+   build to a connected device)
+2. Trigger Camera modal (Record FAB from the Home tab)
+3. First launch: iOS shows the "Caddie would like to access the Camera"
+   alert — tap Allow
+4. Microphone alert fires next — tap Allow
+5. **Confirm**: live camera preview fills the screen, back camera by
+   default, no redbox, Close button visible top-left
+6. Background the app → reopen → preview resumes (isActive lifecycle)
+7. Re-launch via fresh install with permissions denied at install time —
+   confirm the "Camera access needed" empty state renders with the
+   Open Settings CTA; tap CTA → confirm iOS Settings opens on the
+   Caddie page
+
+**Failure modes to look for:**
+- Preview is black/frozen → check `device` is non-null in dev tools
+- App crashes on Camera mount → likely Info.plist usage descriptions
+  missing or pod install incomplete
+- Permission alert never shows → `canRequestPermission` is false on
+  first launch (shouldn't be — usually means a stale install state;
+  delete the app and reinstall)
+
+**Spec reference:** `PROJECT_SPEC.md` §22 Phase 1.2 line 1120
+("Camera preview renders on device").
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

@@ -104,3 +104,63 @@ jest.mock('react-native-sfsymbols', () => {
       }),
   };
 });
+
+// react-native-svg also wraps native iOS/Android views. Under jest each
+// SVG primitive becomes an inert View so component trees render and
+// `getByLabelText` queries on the parent Pressable still find their
+// children.
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const stub = (name) => {
+    const Component = (props) =>
+      React.createElement(View, { ...props, testID: `svg-${name}` });
+    Component.displayName = `Mock${name}`;
+    return Component;
+  };
+  return {
+    __esModule: true,
+    default: stub('Svg'),
+    Svg: stub('Svg'),
+    Path: stub('Path'),
+    Circle: stub('Circle'),
+    Line: stub('Line'),
+    Rect: stub('Rect'),
+    G: stub('G'),
+    Polygon: stub('Polygon'),
+    Polyline: stub('Polyline'),
+    Defs: stub('Defs'),
+    LinearGradient: stub('LinearGradient'),
+    RadialGradient: stub('RadialGradient'),
+    Stop: stub('Stop'),
+    ClipPath: stub('ClipPath'),
+    Mask: stub('Mask'),
+    Ellipse: stub('Ellipse'),
+  };
+});
+
+// react-native-vision-camera is a Nitro-Modules native package. Stub
+// the surface our wrapper + CameraScreen use:
+//   - useCameraPermission / useMicrophonePermission hooks (default to
+//     not-determined; individual tests override via mockReturnValueOnce)
+//   - useCameraDevice hook (defaults to a fake back camera so the
+//     "granted" branch renders by default; tests opt into noDevice by
+//     mocking it to return undefined)
+//   - Camera component (stub View)
+jest.mock('react-native-vision-camera', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const notDetermined = {
+    status: 'not-determined',
+    hasPermission: false,
+    canRequestPermission: true,
+    requestPermission: jest.fn().mockResolvedValue(false),
+  };
+  return {
+    __esModule: true,
+    Camera: ({ style }) => React.createElement(View, { style }),
+    useCameraPermission: jest.fn(() => ({ ...notDetermined })),
+    useMicrophonePermission: jest.fn(() => ({ ...notDetermined })),
+    useCameraDevice: jest.fn(() => ({ id: 'mock-back', position: 'back' })),
+  };
+});

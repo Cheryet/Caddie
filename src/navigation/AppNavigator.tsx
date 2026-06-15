@@ -1,11 +1,12 @@
 /**
  * AppNavigator — Navigation
  * Authenticated main app: bottom tabs with two nested native stacks
- * (Library and Profile) for push navigation. Uses the default React
- * Navigation tab bar in Phase 0.3; the custom themed tab bar with Record
- * FAB arrives in Phase 1.1 alongside the UI component layer.
+ * (Library and Profile) for push navigation. Uses a custom tab bar
+ * (AppTabBar) that matches Design/TabBar.dc.html — 4 tabs plus a centre
+ * Record FAB that opens the Camera modal on the root stack.
  *
- * Source of truth: PROJECT_SPEC.md §10 Navigation Architecture
+ * Source of truth: PROJECT_SPEC.md §10 Navigation Architecture +
+ * Design/TabBar.dc.html.
  */
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -19,6 +20,7 @@ import { SettingsScreen } from '@/features/profile/screens/SettingsScreen';
 import { TempoScreen } from '@/features/tempo/screens/TempoScreen';
 import { colors } from '@/theme';
 
+import { AppTabBar } from './AppTabBar';
 import type {
   AppTabsParamList,
   LibraryStackParamList,
@@ -71,38 +73,22 @@ function ProfileNavigator() {
   );
 }
 
+// Hoisted to module scope so React doesn't see a new tabBar component
+// type on every render of AppNavigator (which would force remount of the
+// bar each time and lose its internal state).
+function renderTabBar(props: React.ComponentProps<typeof AppTabBar>) {
+  return <AppTabBar {...props} />;
+}
+
 export function AppNavigator() {
   return (
     <Tabs.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.gold.default,
-        tabBarInactiveTintColor: colors.text.tertiary,
-        tabBarStyle: {
-          backgroundColor: colors.bg.elevated,
-          borderTopColor: colors.border.subtle,
-        },
-      }}>
-      <Tabs.Screen
-        name="HomeTab"
-        component={HomeScreen}
-        options={{ title: 'Home' }}
-      />
-      <Tabs.Screen
-        name="LibraryTab"
-        component={LibraryNavigator}
-        options={{ title: 'Library' }}
-      />
-      <Tabs.Screen
-        name="TempoTab"
-        component={TempoScreen}
-        options={{ title: 'Tempo' }}
-      />
-      <Tabs.Screen
-        name="ProfileTab"
-        component={ProfileNavigator}
-        options={{ title: 'Profile' }}
-      />
+      tabBar={renderTabBar}
+      screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="HomeTab" component={HomeScreen} />
+      <Tabs.Screen name="LibraryTab" component={LibraryNavigator} />
+      <Tabs.Screen name="TempoTab" component={TempoScreen} />
+      <Tabs.Screen name="ProfileTab" component={ProfileNavigator} />
     </Tabs.Navigator>
   );
 }
