@@ -1,11 +1,10 @@
 /**
  * User — Type
- * Minimal user shape used by the global auth store. Phase 0.5 replaces
- * this with a re-export of @supabase/supabase-js's User type once the
- * SDK is installed; the rest of the app continues to import from here.
+ * Project-wide alias for the Supabase auth User. We re-export rather than
+ * import directly from `@supabase/supabase-js` everywhere so the swap is
+ * trivial if the SDK ever changes its shape.
+ *
+ * Used by: useAppStore, useAuth (Phase 0.6).
  */
 
-export interface User {
-  id: string;
-  email: string | null;
-}
+export type { User } from '@supabase/supabase-js';
