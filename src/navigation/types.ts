@@ -43,7 +43,7 @@ export type AppTabsParamList = {
 
 // ───── Root stack (auth gate + modal group) ─────
 export type RootStackParamList = {
-  Auth: NavigatorScreenParams<AuthStackParamList>;
+  AuthStack: NavigatorScreenParams<AuthStackParamList>;
   Tabs: NavigatorScreenParams<AppTabsParamList>;
   Camera: undefined;
   Playback: { videoId: string };

@@ -73,7 +73,7 @@ export function RootNavigator() {
             </Stack.Group>
           </>
         ) : (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
+          <Stack.Screen name="AuthStack" component={AuthNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

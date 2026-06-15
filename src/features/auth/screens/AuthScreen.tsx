@@ -39,6 +39,10 @@ type Mode = 'signin' | 'signup';
 const EDGES: Edge[] = ['top', 'bottom'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Magic-link sign-in is wired but the affordance is hidden until we have
+// custom SMTP + a code-first magic-link email template. See TODO.md.
+const MAGIC_LINK_ENABLED = false;
+
 export function AuthScreen({ navigation }: AuthStackScreenProps<'Auth'>) {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -213,8 +217,8 @@ export function AuthScreen({ navigation }: AuthStackScreenProps<'Auth'>) {
             )}
           </Pressable>
 
-          {/* Magic link (sign-in only) */}
-          {!isSignup ? (
+          {/* Magic link (sign-in only) — hidden until SMTP/template ready (TODO.md) */}
+          {MAGIC_LINK_ENABLED && !isSignup ? (
             <Pressable
               onPress={handleMagicLink}
               disabled={!isEmailValid || isSubmitting}
