@@ -6,18 +6,21 @@
  * siblings of the tabs in the same native stack, the tab bar is naturally
  * hidden whenever a modal is presented (PROJECT_SPEC.md §10).
  *
- * The `isAuthenticated` flag is hardcoded to true in Phase 0.3 so the
- * main app is reachable for scaffolding. Phase 0.6 replaces this with a
- * real Supabase session check from the Zustand auth store.
+ * The auth gate reads from the Zustand store, which is kept in sync by
+ * <AuthBootstrap /> (mounted in App.tsx). While the initial session
+ * lookup is in flight, we render a minimal splash to avoid flashing the
+ * Auth stack to a returning user.
  */
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AnalysisScreen } from '@/features/analysis/screens/AnalysisScreen';
 import { CameraScreen } from '@/features/camera/screens/CameraScreen';
 import { ComparisonScreen } from '@/features/comparison/screens/ComparisonScreen';
 import { PlaybackScreen } from '@/features/playback/screens/PlaybackScreen';
+import { useAppStore } from '@/store/useAppStore';
 import { colors } from '@/theme';
 
 import { AppNavigator } from './AppNavigator';
@@ -25,9 +28,6 @@ import { AuthNavigator } from './AuthNavigator';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-// Phase 0.6 swaps this for `useAppStore(s => Boolean(s.user))`.
-const isAuthenticated = true;
 
 const navTheme = {
   dark: true,
@@ -48,6 +48,13 @@ const navTheme = {
 };
 
 export function RootNavigator() {
+  const isAuthLoading = useAppStore(s => s.isAuthLoading);
+  const isAuthenticated = useAppStore(s => Boolean(s.user));
+
+  if (isAuthLoading) {
+    return <Splash />;
+  }
+
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -72,3 +79,20 @@ export function RootNavigator() {
     </NavigationContainer>
   );
 }
+
+function Splash() {
+  return (
+    <View style={splashStyles.container}>
+      <ActivityIndicator color={colors.gold.default} />
+    </View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

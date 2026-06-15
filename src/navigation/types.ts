@@ -14,9 +14,12 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 
 // ───── Auth stack (rendered when no session) ─────
+// Single combined Auth screen toggles between sign-in / create-account
+// modes; Verify takes the email so the user doesn't have to retype it
+// and the screen knows which Supabase OTP type to verify against.
 export type AuthStackParamList = {
-  SignIn: undefined;
-  SignUp: undefined;
+  Auth: undefined;
+  Verify: { email: string; mode: 'signup' | 'magiclink' };
 };
 
 // ───── Tab-nested stacks (push nav within a tab) ─────
@@ -52,11 +55,12 @@ export type RootStackParamList = {
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
 
+// Auth screens never push to the authenticated stack — they live in the
+// pre-session branch and are unmounted entirely when a session arrives.
+// Skipping the composite avoids React Nav's distributive-union collapse
+// of the navigate() type into `never`.
 export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
-  CompositeScreenProps<
-    NativeStackScreenProps<AuthStackParamList, T>,
-    RootStackScreenProps<keyof RootStackParamList>
-  >;
+  NativeStackScreenProps<AuthStackParamList, T>;
 
 export type AppTabsScreenProps<T extends keyof AppTabsParamList> =
   CompositeScreenProps<

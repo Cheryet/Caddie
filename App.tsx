@@ -12,6 +12,7 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AuthBootstrap } from '@/features/auth/components/AuthBootstrap';
 import { RootNavigator } from '@/navigation/RootNavigator';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
     <GestureHandlerRootView style={rootStyle}>
       <SafeAreaProvider>
         <StatusBar barStyle="light-content" />
+        <AuthBootstrap />
         <RootNavigator />
       </SafeAreaProvider>
     </GestureHandlerRootView>
