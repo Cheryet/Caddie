@@ -257,6 +257,70 @@ want to find out before adding capture UI on top.
 
 ---
 
+## Library — search, filter chips, processing banner (Phase 1.5 deferred)
+
+**Status:** `LibraryScreen` ships with the §22 Phase 1.5 acceptance — a
+2-col `FlashList` grid, pull-to-refresh, skeleton loading, empty state
+with record CTA, and `VideoCard` per the §11 anatomy. Three affordances
+from `Design/Caddie Screens.dc.html` §04 are intentionally left out:
+
+1. **Search bar** ("Search by club or date") under the header
+2. **Filter chip row** (All / Driver / Irons / Analysed) and the filter
+   modal trigger
+3. **"Processing N swings from this morning…" banner** that surfaces an
+   in-flight upload queue at the top of the loading state
+
+**Why deferred:** §22 Phase 1.5 lists exactly four bullets — install
+flash-list, useVideos hook, grid+refresh+empty+skeleton, VideoCard. The
+above three are correctness for a later iteration, not Phase 1.5 scope.
+Bundling them now would mix two phases and create test/refactor churn
+when the real upload-status surfaces in Phase 1.4's NetInfo retry work
+or Phase 1.8's filter sheet.
+
+**Revisit when:** Library has enough rows that "find the swing from
+two weeks ago" matters (search/filter), or when the upload queue surfaces
+a visible state (processing banner — likely Phase 1.4 follow-up).
+
+**What to do at revisit:**
+1. Search: controlled TextInput → debounce → `videos.filter` over
+   title/club_type (client-side is fine until row counts exceed ~500)
+2. Filter chips: lift selected filter into local `useState`, derive
+   visible list with `useMemo`
+3. Processing banner: extend `useUploadQueueBootstrap` to expose an
+   "in-flight count" signal, render an info row above the grid
+
+---
+
+## Library — DEV seed affordance
+
+**Status:** `LibraryScreen` has a `__DEV__`-only "Seed test row" button
+that inserts a fake `videos` row (no Storage upload — thumbnail_path
+stays null so the card renders its fallback). Compiled out of release
+builds. Exists because the developer is on simulator-only and otherwise
+has no way to populate the grid without a physical device to record on.
+
+**Revisit when:** First real recording lands via physical device, or
+when proper "Import from photos" (Phase 1.6) provides a real path to
+get a row into the table without seeding. At that point delete the
+`onPressSeed` callback + the DEV button block.
+
+---
+
+## Library — VideoDetail screen (Phase 1.8)
+
+**Status:** `VideoDetailScreen` is still a `Placeholder`. The Library
+grid does NOT route into it — card tap goes straight to root-stack
+`Playback` (matches the design caption: "Tapping a card runs the
+expand-from-thumbnail transition into Playback"). The route remains in
+`LibraryStackParamList` because the rename/retag/delete sheet from
+Phase 1.8 will land there.
+
+**Revisit when:** Phase 1.8 (Video management). The screen should host
+the metadata edit form (title, club, angle, hand, tags) and a delete
+action that fires both row delete + Storage delete.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

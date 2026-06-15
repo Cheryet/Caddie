@@ -162,6 +162,44 @@ jest.mock('react-native-svg', () => {
   };
 });
 
+// @shopify/flash-list ships native iOS/Android views. Under jest we
+// substitute a plain ScrollView-backed component so tests can render
+// items and assert on them. Mirrors the props we use (data, renderItem,
+// keyExtractor, refreshing, onRefresh, numColumns).
+jest.mock('@shopify/flash-list', () => {
+  const React = require('react');
+  const { ScrollView, RefreshControl, View } = require('react-native');
+  const FlashList = (props) => {
+    const items = (props.data ?? []).map((item, index) => {
+      const key = props.keyExtractor
+        ? props.keyExtractor(item, index)
+        : String(index);
+      return React.createElement(
+        View,
+        { key },
+        props.renderItem
+          ? props.renderItem({ item, index, target: 'Cell' })
+          : null,
+      );
+    });
+    return React.createElement(
+      ScrollView,
+      {
+        contentContainerStyle: props.contentContainerStyle,
+        refreshControl: props.onRefresh
+          ? React.createElement(RefreshControl, {
+              refreshing: !!props.refreshing,
+              onRefresh: props.onRefresh,
+            })
+          : undefined,
+        testID: 'flash-list',
+      },
+      items,
+    );
+  };
+  return { __esModule: true, FlashList };
+});
+
 // react-native-vision-camera is a Nitro-Modules native package. Stub
 // the surface our wrapper + CameraScreen use:
 //   - useCameraPermission / useMicrophonePermission hooks (default to

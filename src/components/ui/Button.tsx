@@ -35,18 +35,39 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  /**
+   * When true and `variant="primary"`, applies the gold-glow drop shadow
+   * called for by the empty-state hero CTAs in Caddie Screens.dc.html
+   * (e.g. LibraryScreen empty, OnboardingScreen). Off by default — most
+   * primary buttons sit on a surface where the shadow would feel heavy.
+   */
+  shadow?: boolean;
 }
 
 interface SizeSpec {
   height: number;
   paddingH: number;
   fontSize: number;
+  borderRadius: number;
 }
 
 const SIZES: Record<ButtonSize, SizeSpec> = {
-  sm: { height: 36, paddingH: 14, fontSize: 13 },
-  md: { height: 48, paddingH: 20, fontSize: 15 },
-  lg: { height: 56, paddingH: 24, fontSize: 17 },
+  sm: { height: 36, paddingH: 14, fontSize: 13, borderRadius: layout.borderRadius.md },
+  md: { height: 48, paddingH: 20, fontSize: 15, borderRadius: layout.borderRadius.md },
+  // Primary hero CTAs use the larger 14px radius + 52px height per the
+  // design system (Caddie Auth.dc.html, Caddie Screens.dc.html §04 empty).
+  lg: { height: 52, paddingH: 24, fontSize: 16, borderRadius: layout.borderRadius.lg },
+};
+
+// Gold-glow drop shadow for hero CTAs. Native shadow tokens are split:
+// iOS reads shadowColor/Offset/Opacity/Radius; Android reads `elevation`.
+// We provide both so the same prop works cross-platform.
+const GOLD_GLOW_SHADOW = {
+  shadowColor: colors.gold.default,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.6,
+  shadowRadius: 14,
+  elevation: 8,
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -60,6 +81,7 @@ export function Button({
   loading = false,
   disabled = false,
   fullWidth = false,
+  shadow = false,
 }: ButtonProps) {
   const scale = useSharedValue(1);
   const sizeSpec = SIZES[size];
@@ -97,9 +119,11 @@ export function Button({
         {
           height: sizeSpec.height,
           paddingHorizontal: sizeSpec.paddingH,
+          borderRadius: sizeSpec.borderRadius,
         },
         fullWidth && styles.fullWidth,
         disabled && styles.disabled,
+        shadow && variant === 'primary' && !disabled && GOLD_GLOW_SHADOW,
         animatedStyle,
       ]}>
       {loading ? (
@@ -160,7 +184,6 @@ const VARIANT_STYLES: Record<ButtonVariant, VariantStyle> = {
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: layout.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 44,
