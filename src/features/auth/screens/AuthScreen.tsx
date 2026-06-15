@@ -8,27 +8,27 @@
  * out of MVP scope; Apple is required by App Store guideline 4.8 once
  * any third-party social auth ships, so they will land together).
  *
- * Visual values match Design/Caddie Auth.dc.html (Frame 2). The shared
- * design-system primitives (Button, Input, …) arrive in Phase 1.1 — this
- * screen uses raw RN with theme tokens until then. Refactor is purely
- * structural at that point.
+ * Visual values match Design/Caddie Auth.dc.html (Frame 2). The screen
+ * composes design-system primitives (Button, Input) for the field stack
+ * and CTA; the segmented control and social placeholders remain local
+ * subcomponents — they're screen-specific patterns, not shared
+ * primitives.
  */
 
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import type { Edge } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button, Input } from '@/components/ui';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -130,48 +130,37 @@ export function AuthScreen({ navigation }: AuthStackScreenProps<'Auth'>) {
 
           {/* Fields */}
           <View style={styles.fields}>
-            <Field label="Email">
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@email.com"
-                placeholderTextColor={colors.text.tertiary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                keyboardType="email-address"
-                inputMode="email"
-                returnKeyType="next"
-                editable={!isSubmitting}
-              />
-            </Field>
-
-            <Field label="Password">
-              <View style={styles.inputWrap}>
-                <TextInput
-                  style={[styles.input, styles.inputWithAdornment]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder={
-                    isSignup ? 'Create a password' : 'Enter your password'
-                  }
-                  placeholderTextColor={colors.text.tertiary}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete={isSignup ? 'new-password' : 'current-password'}
-                  textContentType={
-                    isSignup ? 'newPassword' : 'password'
-                  }
-                  returnKeyType="go"
-                  onSubmitEditing={handleSubmit}
-                  editable={!isSubmitting}
-                />
+            <Input
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@email.com"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              keyboardType="email-address"
+              inputMode="email"
+              returnKeyType="next"
+              editable={!isSubmitting}
+            />
+            <Input
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder={isSignup ? 'Create a password' : 'Enter your password'}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              textContentType={isSignup ? 'newPassword' : 'password'}
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit}
+              editable={!isSubmitting}
+              helper={isSignup ? 'At least 8 characters.' : undefined}
+              rightAdornment={
                 <Pressable
                   onPress={() => setShowPassword(p => !p)}
                   hitSlop={8}
-                  style={styles.adornment}
                   accessibilityRole="button"
                   accessibilityLabel={
                     showPassword ? 'Hide password' : 'Show password'
@@ -180,14 +169,12 @@ export function AuthScreen({ navigation }: AuthStackScreenProps<'Auth'>) {
                     {showPassword ? 'Hide' : 'Show'}
                   </Text>
                 </Pressable>
-              </View>
-              {isSignup ? (
-                <Text style={styles.hint}>At least 8 characters.</Text>
-              ) : null}
-            </Field>
+              }
+            />
           </View>
 
-          {/* Inline error */}
+          {/* Inline error — Toast would be wrong here (auth errors need
+              persistence until the user retries). */}
           {error ? (
             <View
               style={styles.errorBox}
@@ -198,42 +185,29 @@ export function AuthScreen({ navigation }: AuthStackScreenProps<'Auth'>) {
           ) : null}
 
           {/* Primary CTA */}
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              !canSubmit && styles.primaryButtonDisabled,
-              pressed && canSubmit && styles.primaryButtonPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSubmit, busy: isSubmitting }}>
-            {isSubmitting ? (
-              <ActivityIndicator color={colors.text.inverse} />
-            ) : (
-              <Text style={styles.primaryButtonLabel}>
-                {isSignup ? 'Create account' : 'Sign in'}
-              </Text>
-            )}
-          </Pressable>
+          <View style={styles.cta}>
+            <Button
+              label={isSignup ? 'Create account' : 'Sign in'}
+              onPress={handleSubmit}
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              disabled={!canSubmit}
+              fullWidth
+            />
+          </View>
 
           {/* Magic link (sign-in only) — hidden until SMTP/template ready (TODO.md) */}
           {MAGIC_LINK_ENABLED && !isSignup ? (
-            <Pressable
-              onPress={handleMagicLink}
-              disabled={!isEmailValid || isSubmitting}
-              hitSlop={8}
-              style={styles.magicLink}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !isEmailValid || isSubmitting }}>
-              <Text
-                style={[
-                  styles.magicLinkLabel,
-                  !isEmailValid && styles.magicLinkDisabled,
-                ]}>
-                Email me a sign-in code instead
-              </Text>
-            </Pressable>
+            <View style={styles.magicLink}>
+              <Button
+                label="Email me a sign-in code instead"
+                onPress={handleMagicLink}
+                variant="ghost"
+                size="sm"
+                disabled={!isEmailValid || isSubmitting}
+              />
+            </View>
           ) : null}
 
           {/* Divider */}
@@ -301,23 +275,12 @@ function SegmentButton({ label, active, onPress }: SegmentButtonProps) {
   );
 }
 
-interface FieldProps {
-  label: string;
-  children: React.ReactNode;
-}
-
-function Field({ label, children }: FieldProps) {
-  return (
-    <View>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
 function SocialPlaceholder({ label }: { label: string }) {
   return (
-    <View style={styles.socialButton} accessible accessibilityRole="button"
+    <View
+      style={styles.socialButton}
+      accessible
+      accessibilityRole="button"
       accessibilityState={{ disabled: true }}
       accessibilityLabel={`${label} sign in — coming soon`}>
       <Text style={styles.socialLabel}>{label}</Text>
@@ -392,43 +355,10 @@ const styles = StyleSheet.create({
     marginTop: spacing[5],
     gap: spacing[4],
   },
-  fieldLabel: {
-    ...typography.label,
-    marginBottom: spacing[2],
-  },
-  inputWrap: {
-    position: 'relative',
-  },
-  input: {
-    height: 48,
-    backgroundColor: colors.bg.input,
-    borderWidth: spacing.px,
-    borderColor: colors.border.default,
-    borderRadius: layout.borderRadius.md,
-    paddingHorizontal: spacing[3] + 2,
-    color: colors.text.primary,
-    fontSize: 15,
-  },
-  inputWithAdornment: {
-    paddingRight: 64,
-  },
-  adornment: {
-    position: 'absolute',
-    right: spacing[1],
-    top: spacing[1],
-    height: 40,
-    paddingHorizontal: spacing[3],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: layout.borderRadius.sm,
-  },
   adornmentLabel: {
     ...typography.labelStrong,
     color: colors.text.secondary,
-  },
-  hint: {
-    ...typography.caption,
-    marginTop: spacing[2],
+    paddingHorizontal: spacing[2],
   },
   errorBox: {
     marginTop: spacing[4],
@@ -442,36 +372,12 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.semantic.error,
   },
-  primaryButton: {
+  cta: {
     marginTop: spacing[5],
-    height: 54,
-    borderRadius: layout.borderRadius.lg,
-    backgroundColor: colors.gold.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonPressed: {
-    backgroundColor: colors.gold.bright,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.4,
-  },
-  primaryButtonLabel: {
-    ...typography.bodyStrong,
-    color: colors.text.inverse,
-    fontSize: 16,
   },
   magicLink: {
-    marginTop: spacing[4],
+    marginTop: spacing[2],
     alignItems: 'center',
-    paddingVertical: spacing[2],
-  },
-  magicLinkLabel: {
-    ...typography.labelStrong,
-    color: colors.gold.default,
-  },
-  magicLinkDisabled: {
-    color: colors.text.tertiary,
   },
   divider: {
     marginTop: spacing[6],

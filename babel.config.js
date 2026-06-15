@@ -25,5 +25,9 @@ module.exports = {
         ],
       },
     ],
+    // Reanimated 4 uses react-native-worklets for its worklet engine; the
+    // plugin must be LAST in the plugins array so all other transforms
+    // run first.
+    'react-native-worklets/plugin',
   ],
 };

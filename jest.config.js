@@ -4,4 +4,6 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // react-native-reanimated is mocked wholesale in jest.setup.js, so its
+  // real sources are never required — no transform exception needed.
 };

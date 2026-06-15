@@ -49,3 +49,58 @@ jest.mock('react-native-purchases', () => ({
     LOG_LEVEL: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
   },
 }));
+
+// react-native-reanimated 4's bundled mock pulls in react-native-worklets
+// which tries to access a native module at require time. Provide a hand-
+// rolled stub of just the API surface our components use — shared values
+// become plain refs, animated styles return empty objects, transition
+// helpers resolve to their target synchronously.
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native');
+  // The transition helpers return their target synchronously and DO NOT
+  // invoke completion callbacks. Calling the callback under jest would
+  // simulate the animation finishing immediately, which can confuse
+  // tests that drive auto-dismiss timers or completion-triggered state
+  // transitions (e.g. Toast's auto-hide). Components are responsible
+  // for testing dismissal via the imperative API or fake timers.
+  const passthrough = toValue => toValue;
+  return {
+    __esModule: true,
+    default: {
+      View,
+      createAnimatedComponent: Component => Component,
+    },
+    View,
+    Easing: {
+      inOut: fn => fn ?? (() => 0),
+      out: fn => fn ?? (() => 0),
+      in: fn => fn ?? (() => 0),
+      ease: () => 0,
+      cubic: () => 0,
+      linear: () => 0,
+    },
+    runOnJS: fn => fn,
+    useAnimatedStyle: () => ({}),
+    useSharedValue: init => ({ value: init }),
+    withDelay: (_delay, animation) => animation,
+    withRepeat: animation => animation,
+    withSpring: passthrough,
+    withTiming: passthrough,
+  };
+});
+
+// react-native-sfsymbols renders a native iOS view. Under jest there's
+// no native side, so stub it with a plain accessible View carrying the
+// symbol name for assertion.
+jest.mock('react-native-sfsymbols', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    SFSymbol: ({ name, ...rest }) =>
+      React.createElement(View, {
+        accessibilityLabel: `SFSymbol:${name}`,
+        ...rest,
+      }),
+  };
+});
