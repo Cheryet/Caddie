@@ -42,11 +42,33 @@ export type AppTabsParamList = {
 };
 
 // ───── Root stack (auth gate + modal group) ─────
+
+/**
+ * Playback can be reached two ways:
+ *   1. From the library — `{ videoId }` references a row in `videos`.
+ *   2. Straight off the camera — `{ localUri, ... }` is the temp file
+ *      Vision Camera just wrote. The upload pipeline (Phase 1.4) hands
+ *      the metadata over so the playback chrome (club, angle, hand) is
+ *      correct before the row exists in Postgres.
+ *
+ * Discriminated by the presence of `videoId` vs `localUri`; callers
+ * branch on that to decide whether to fetch from Supabase or read from
+ * the filesystem.
+ */
+export type PlaybackParams =
+  | { videoId: string }
+  | {
+      localUri: string;
+      angle: 'face-on' | 'dtl';
+      clubType: string;
+      swingHand: 'right' | 'left';
+    };
+
 export type RootStackParamList = {
   AuthStack: NavigatorScreenParams<AuthStackParamList>;
   Tabs: NavigatorScreenParams<AppTabsParamList>;
   Camera: undefined;
-  Playback: { videoId: string };
+  Playback: PlaybackParams;
   Analysis: { videoId: string };
   Comparison: { videoIdA: string; videoIdB: string };
 };

@@ -56,7 +56,7 @@ jest.mock('react-native-purchases', () => ({
 // become plain refs, animated styles return empty objects, transition
 // helpers resolve to their target synchronously.
 jest.mock('react-native-reanimated', () => {
-  const { View } = require('react-native');
+  const { Text, View } = require('react-native');
   // The transition helpers return their target synchronously and DO NOT
   // invoke completion callbacks. Calling the callback under jest would
   // simulate the animation finishing immediately, which can confuse
@@ -68,9 +68,11 @@ jest.mock('react-native-reanimated', () => {
     __esModule: true,
     default: {
       View,
+      Text,
       createAnimatedComponent: Component => Component,
     },
     View,
+    Text,
     Easing: {
       inOut: fn => fn ?? (() => 0),
       out: fn => fn ?? (() => 0),
@@ -156,11 +158,31 @@ jest.mock('react-native-vision-camera', () => {
     canRequestPermission: true,
     requestPermission: jest.fn().mockResolvedValue(false),
   };
+  // Recorder stub — startRecording does NOT fire onFinished by itself;
+  // tests that need to assert post-record navigation call the captured
+  // callback directly. stopRecording resolves immediately.
+  const makeRecorder = () => ({
+    isRecording: false,
+    isPaused: false,
+    recordedDuration: 0,
+    recordedFileSize: 0,
+    filePath: '/tmp/mock-recording.mov',
+    startRecording: jest.fn().mockResolvedValue(undefined),
+    stopRecording: jest.fn().mockResolvedValue(undefined),
+    pauseRecording: jest.fn().mockResolvedValue(undefined),
+    resumeRecording: jest.fn().mockResolvedValue(undefined),
+    cancelRecording: jest.fn().mockResolvedValue(undefined),
+  });
   return {
     __esModule: true,
     Camera: ({ style }) => React.createElement(View, { style }),
     useCameraPermission: jest.fn(() => ({ ...notDetermined })),
     useMicrophonePermission: jest.fn(() => ({ ...notDetermined })),
     useCameraDevice: jest.fn(() => ({ id: 'mock-back', position: 'back' })),
+    useVideoOutput: jest.fn(() => ({
+      createRecorder: jest.fn().mockResolvedValue(makeRecorder()),
+      getSupportedVideoCodecs: jest.fn(() => []),
+      setOutputSettings: jest.fn().mockResolvedValue(undefined),
+    })),
   };
 });

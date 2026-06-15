@@ -146,7 +146,60 @@ commit history when this phase is picked back up.
 
 ---
 
-## Physical-device verification — Phase 1.2 camera preview
+## Profile-driven capture defaults (swing hand + camera angle)
+
+**Status:** `CameraScreen` hardcodes swing hand to `'right'` and camera
+angle to `'face-on'` as the per-recording defaults. The screen still
+lets the user override them per-recording (segmented controls), but it
+ignores any profile preference.
+
+**Why deferred:** ProfileScreen doesn't exist yet, and the `profiles`
+table is missing `default_camera_angle` / `default_club` columns. Adding
+them would require a migration + types regen + UI to set them. Out of
+scope for Phase 1.3 — would prematurely overlap Phase 1.5 (ProfileScreen).
+
+**Spec reference:** `PROJECT_SPEC.md` §4 line 63 — "Swing hand selector —
+right or left handed (defaults to profile preference, overridable per
+video)". Today we satisfy the *overridable per video* half; the *defaults
+to profile preference* half is pending.
+
+**Revisit when:** ProfileScreen lands (Phase 1.5 or earlier). Steps:
+1. Add `default_camera_angle` + `default_club` columns to `profiles`
+   via a Supabase migration; regenerate `src/types/database.ts`
+2. Build a `useProfilePreferences` hook in `src/features/profile/hooks/`
+3. In `CameraScreen`, replace the `useState` initialisers for
+   `angle`, `swingHand`, `club` with hook-derived defaults; keep
+   the local `useState` for per-recording overrides
+4. Wire ProfileScreen's "Default camera angle" + "Default club" rows
+   to update the profile row (see Design/Caddie Screens.dc.html line 1099)
+
+---
+
+## Camera flip (front camera) — Phase 1.3 deferred
+
+**Status:** The Flip button in `CameraScreen` is wired into the UI
+(per Design/Caddie Screens.dc.html line 366) but its `onPress` is a
+no-op. Recording is back-camera only.
+
+**Why deferred:** MVP §4 explicitly says "rear, 60fps" (PROJECT_SPEC.md
+line 60). Front-camera support is a nice-to-have not in scope. Showing
+the button keeps the layout faithful to the design; making it work is
+half a day's work that no MVP demo requires.
+
+**Revisit when:** Post-MVP UX polish, or if user testing reveals
+golfers regularly want a selfie-mode swing check.
+
+**What to do at revisit:**
+1. Add a `cameraPosition` state in `CameraScreen` (`'back' | 'front'`)
+2. Pass it to `useCameraDevice(cameraPosition)`
+3. Wire the flip button's `onPress` to toggle, with a Reanimated
+   crossfade or rotate on the icon for feedback
+4. Pose-model mirroring (Phase 2.x) needs to handle front-camera
+   horizontal flip; track that as a sub-task
+
+---
+
+## Physical-device verification — Phase 1.2 camera preview + Phase 1.3 recording
 
 **Status:** Acceptance gap. Phase 1.2 shipped with the permission flow
 verified on iOS Simulator (request dialog fires, denied → Open Settings
@@ -188,8 +241,19 @@ want to find out before adding capture UI on top.
   first launch (shouldn't be — usually means a stale install state;
   delete the app and reinstall)
 
-**Spec reference:** `PROJECT_SPEC.md` §22 Phase 1.2 line 1120
-("Camera preview renders on device").
+**Phase 1.3 additions:**
+8. Tap the record button → 3-2-1 countdown overlay appears → recording
+   starts → top status pill flips to "0:01", "0:02", ... with red dot
+9. During recording: angle / hand / club controls are hidden (locked)
+10. Tap record again → recording stops → app navigates to the Playback
+    placeholder showing the localUri + club + angle + hand
+11. Start a new recording → let it run to 60 seconds → automatic stop
+    and same navigation (max-duration cap)
+12. While in countdown: tap Close → countdown cancels, returns to idle
+13. Confirm `mmkv` last-club persists across app cold restarts
+
+**Spec reference:** `PROJECT_SPEC.md` §22 Phase 1.2 line 1120 + Phase
+1.3 lines 1122–1127.
 
 ---
 
