@@ -107,6 +107,27 @@ jest.mock('react-native-sfsymbols', () => {
   };
 });
 
+// react-native-compressor is a Nitro-Modules native package. Stub the
+// surface our upload pipeline uses: Video.compress, createVideoThumbnail,
+// uuidv4. Tests can override per-case via mockResolvedValueOnce.
+jest.mock('react-native-compressor', () => ({
+  __esModule: true,
+  Video: {
+    compress: jest.fn().mockResolvedValue('/tmp/mock-compressed.mp4'),
+    cancelCompression: jest.fn(),
+    activateBackgroundTask: jest.fn().mockResolvedValue(undefined),
+    deactivateBackgroundTask: jest.fn().mockResolvedValue(undefined),
+  },
+  createVideoThumbnail: jest.fn().mockResolvedValue({
+    path: '/tmp/mock-thumb.jpg',
+    size: 1024,
+    mime: 'image/jpeg',
+    width: 100,
+    height: 100,
+  }),
+  uuidv4: jest.fn(() => 'test-uuid-0000-0000'),
+}));
+
 // react-native-svg also wraps native iOS/Android views. Under jest each
 // SVG primitive becomes an inert View so component trees render and
 // `getByLabelText` queries on the parent Pressable still find their
