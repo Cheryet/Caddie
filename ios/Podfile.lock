@@ -52,6 +52,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - PurchasesHybridCommon (18.14.1):
+    - RevenueCat (= 5.78.0)
   - RCTDeprecation (0.86.0)
   - RCTRequired (0.86.0)
   - RCTSwiftUI (0.86.0)
@@ -1965,6 +1967,7 @@ PODS:
     - React-utils (= 0.86.0)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.86.0)
+  - RevenueCat (5.78.0)
   - RNGestureHandler (3.0.1):
     - hermes-engine
     - RCTRequired
@@ -1987,6 +1990,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNPurchases (10.3.0):
+    - PurchasesHybridCommon (= 18.14.1)
+    - React-Core
   - RNScreens (4.25.2):
     - hermes-engine
     - RCTRequired
@@ -2117,12 +2123,15 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
   trunk:
     - MMKVCore
+    - PurchasesHybridCommon
+    - RevenueCat
 
 EXTERNAL SOURCES:
   FBLazyVector:
@@ -2284,6 +2293,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   Yoga:
@@ -2295,6 +2306,7 @@ SPEC CHECKSUMS:
   MMKVCore: 3d16ce9f7d411e135020915fde98a056859a1efa
   NitroMmkv: 1ff46eceb958298b1d7c013a6314432438b77a62
   NitroModules: 8308314b644c15567ffad50bb10667e8c1d82666
+  PurchasesHybridCommon: 825e4e748b62c919bc4cb4032b0d1e452409bd74
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f
@@ -2369,7 +2381,9 @@ SPEC CHECKSUMS:
   ReactCodegen: ee39bbc365b4791c9b5183b52c533ebf586e1d8d
   ReactCommon: 4d01bfb533b93a2103329dfefc74db6a9e272888
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
+  RevenueCat: f3641992451c1426da8d8d1466cec3bbdb765962
   RNGestureHandler: 87f8ed908df0e4f15c12180e844be3545cbd48df
+  RNPurchases: a0928d4e723e184989ed433a1562f6155331ee57
   RNScreens: 032083414633a4d94cbcf08f8ab5019d72d1ba36
   Yoga: 94172d87dd5d83fc929bf1ee53121b5d4490b5f2
 

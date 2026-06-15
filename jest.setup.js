@@ -33,3 +33,19 @@ jest.mock('react-native-config', () => ({
   __esModule: true,
   default: {},
 }));
+
+// react-native-purchases has a native iOS module that jest can't load.
+// Stub the surface our wrapper uses (configure / getCustomerInfo /
+// setLogLevel / LOG_LEVEL enum). Tests that need specific behaviour
+// per-case override these mocks at the test level.
+jest.mock('react-native-purchases', () => ({
+  __esModule: true,
+  default: {
+    configure: jest.fn(),
+    getCustomerInfo: jest
+      .fn()
+      .mockResolvedValue({ entitlements: { active: {} } }),
+    setLogLevel: jest.fn(),
+    LOG_LEVEL: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
+  },
+}));

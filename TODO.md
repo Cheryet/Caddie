@@ -103,6 +103,49 @@ confirmation and SMTP, the Site URL needs to point somewhere meaningful
 
 ---
 
+## Phase 0.7 — Sentry and analytics (deferred entirely)
+
+**Status:** Phase skipped. Neither `@sentry/react-native` nor `posthog-react-native`
+is installed. `App.tsx` has no error boundary and no analytics wrapper.
+
+**Why deferred:** Crash reporting + product analytics deliver most of their
+value once the app has real users (TestFlight onwards). Pre-MVP, the cost
+of the native plumbing (Sentry's iOS pod, sourcemap upload phase, env wiring)
+outweighed the benefit — pushed past the build-out phase so we keep momentum
+on user-visible features.
+
+**Trade-off accepted:** Any crash in dev / internal testing reaches us only
+via the simulator console or a tester's screenshot, not a centralised
+dashboard. Acceptable while the only testers are the dev team.
+
+**Revisit when:** Approaching TestFlight or external beta. Aim to land this
+before any non-dev user installs the app.
+
+**What to do at revisit:**
+1. Install `@sentry/react-native` — `npm install @sentry/react-native`
+   then `cd ios && pod install`
+2. Create `src/core/sentry/client.ts` exporting `initSentry()` +
+   `captureError()`. DSN via `env.SENTRY_DSN` (already wired in
+   `src/constants/config.ts`). Disable transmission in `__DEV__`.
+3. Install `posthog-react-native@^3` (lighter peer-dep surface than v4).
+   Create `src/core/analytics/posthog.ts` with a singleton client passing
+   our MMKV-backed `customStorage` adapter (avoids the AsyncStorage peer
+   dep entirely). API key + host via `env.POSTHOG_API_KEY` / `env.POSTHOG_HOST`.
+4. Wire `App.tsx`: `initSentry()` at module top, export wrapped in
+   `Sentry.wrap(App)`, mount `<PostHogProvider>` around the tree.
+5. Optional but natural at this point: identify the Supabase user in both
+   SDKs from `useAuthBootstrap` (`setSentryUser`, `posthog.identify`) and
+   reset on sign-out.
+6. Manual acceptance: temporarily flip the dev-disable flag, deliberate
+   `throw new Error('Sentry probe')`, verify in Sentry dashboard, revert.
+7. Pre-TestFlight: wire Sentry sourcemap upload into the CI release build.
+
+**Spec reference:** `PROJECT_SPEC.md` §22 Phase 0.7 (lines 1087–1092). The
+phase dependency arrow (`0.7 → 0.8`) is being broken deliberately — see
+commit history when this phase is picked back up.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:
