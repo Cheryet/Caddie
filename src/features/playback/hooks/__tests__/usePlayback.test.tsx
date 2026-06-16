@@ -109,4 +109,26 @@ describe('usePlayback', () => {
     act(() => result.current.toggleChrome());
     expect(result.current.chromeVisible).toBe(true);
   });
+
+  it('chromeLocked suppresses auto-hide and forces visibility', () => {
+    const { result, rerender } = renderHook(
+      ({ locked }: { locked: boolean }) =>
+        usePlayback({ onSeek, chromeLocked: locked }),
+      { initialProps: { locked: false } },
+    );
+
+    // Lock chrome — even after the auto-hide window passes, it stays visible.
+    rerender({ locked: true });
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(result.current.chromeVisible).toBe(true);
+
+    // Unlock — the next 3s tick should hide as usual.
+    rerender({ locked: false });
+    act(() => {
+      jest.advanceTimersByTime(3100);
+    });
+    expect(result.current.chromeVisible).toBe(false);
+  });
 });

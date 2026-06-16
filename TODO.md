@@ -554,6 +554,64 @@ persistence so saved drawings replay on any device width.
 
 ---
 
+## Phase 2.2 — Shake-to-undo deferred
+
+**Status:** Phase 2.2 ships Undo as a toolbar button only (visible
+below the color dot when at least one shape exists). The spec
+bullet says "Undo: removes last shape (shake gesture + button)" —
+the button half is done; shake is deferred.
+
+**Why deferred:** Shake detection needs a native dep
+(`react-native-shake` or rolling our own DeviceMotion bridge) plus
+iOS `NSMotionUsageDescription` in Info.plist plus a `pod install`.
+The button alone fully satisfies the undo affordance; shake is a
+gesture-discoverability nice-to-have.
+
+**Revisit when:** Either (a) we add `react-native-shake` for another
+feature, or (b) user testing reports the toolbar Undo is hard to
+discover. Steps:
+
+1. `npm i react-native-shake`
+2. Add `NSMotionUsageDescription` to `ios/Caddie/Info.plist`
+3. `cd ios && pod install`
+4. Hook in `PlaybackScreen` (or a new `useShake` util) that calls
+   `drawing.undo()` on shake events. Guard with `tool !== 'none'`
+   so a stray shake on the library doesn't trigger anything.
+
+---
+
+## Phase 2.2 — Drawing surface deferrals
+
+**Status:** Phase 2.2 ships the §22 acceptance: Shape /
+DrawingState types, useDrawing extended for commit + undo +
+line-endpoint drag, line + freehand tools functional, full 7-tool
+right-edge toolbar matching the design, button undo. Toolbar fades
+with the rest of the chrome on the 3s auto-hide.
+
+Several follow-on items belong to later phases:
+
+1. **Circle, angle, plane, select tools** — Phase 2.3. The toolbar
+   already renders their icons and they're toggleable; the canvas
+   stays in pass-through mode when they're selected (`enabled`
+   only flips for line + freehand). Phase 2.3 will fill in the
+   shape-creation logic + hit-testing for select.
+2. **Color picker** — Phase 2.3. The color dot in the toolbar is
+   currently static white. `colors.drawing.{white,gold,red,blue}`
+   are wired in the theme but no picker UI exists.
+3. **Persistence + load** — Phase 2.4. Shapes live in memory only;
+   leaving and re-entering PlaybackScreen drops them. Phase 2.4
+   will normalize to [0,1] coords, write to `videos.drawings`
+   (debounced 1s), and load on open.
+4. **Share current frame** — Phase 2.4. Top-bar share button is
+   still a toast placeholder.
+5. **Freehand perf** — currently every onUpdate from RNGH triggers
+   a setState; on extremely long strokes this could lag. Acceptable
+   for v1; revisit if jank appears in user testing. Mitigations on
+   the table: throttle setState (e.g. every 16ms), or render the
+   in-progress shape via a Reanimated shared value path.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

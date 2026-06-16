@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/ui';
 import { DrawingCanvas } from '@/features/drawing/components/DrawingCanvas';
+import { DrawingToolbar } from '@/features/drawing/components/DrawingToolbar';
 import { useDrawing } from '@/features/drawing/hooks/useDrawing';
 import { PlaybackChrome } from '@/features/playback/components/PlaybackChrome';
 import { VideoPlayer } from '@/features/playback/components/VideoPlayer';
@@ -48,13 +49,15 @@ export function PlaybackScreen({
   const source = useVideoSource(params);
   const playerRef = useRef<VideoPlayerHandle>(null);
 
+  // Drawing canvas state (Phase 2.2). Declared before usePlayback so
+  // we can lock the chrome visible while a stroke is in flight.
+  const drawing = useDrawing();
   const playback = usePlayback({
     onSeek: (timeSec: number) => playerRef.current?.seek(timeSec),
+    // While mid-stroke the auto-hide pauses so controls don't fade
+    // out from under the user's finger.
+    chromeLocked: drawing.isStroking,
   });
-  // Drawing canvas state. Phase 2.1 mounts the foundation only —
-  // `tool` stays 'none' (canvas disabled, taps pass through to the
-  // player). Phase 2.2 wires the right-edge toolbar to flip tools.
-  const drawing = useDrawing();
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: 'idle' });
 
@@ -144,9 +147,17 @@ export function PlaybackScreen({
           tap-to-toggle-chrome behavior is preserved. */}
       <DrawingCanvas
         enabled={drawing.enabled}
+        tool={drawing.tool}
+        shapes={drawing.shapes}
+        inProgress={drawing.inProgress}
         onStrokeStart={drawing.onStrokeStart}
         onStrokeMove={drawing.onStrokeMove}
         onStrokeEnd={drawing.onStrokeEnd}
+        // Forward quick taps to the same chrome toggle the player's
+        // Pressable handles when the canvas is disabled. Without
+        // this, tapping a drawing-enabled canvas would just create a
+        // degenerate stroke and the chrome would never toggle.
+        onTap={playback.toggleChrome}
       />
 
       <PlaybackChrome
@@ -164,7 +175,14 @@ export function PlaybackScreen({
         onSeekMs={playback.seekMs}
         rate={playback.rate}
         onRate={playback.setRate}
-      />
+      >
+        <DrawingToolbar
+          tool={drawing.tool}
+          onToolChange={drawing.setTool}
+          canUndo={drawing.shapes.length > 0}
+          onUndo={drawing.undo}
+        />
+      </PlaybackChrome>
 
       {uploadStatus.kind === 'uploading' || uploadStatus.kind === 'failed' ? (
         <UploadStatusPill status={uploadStatus} visible={playback.chromeVisible} />

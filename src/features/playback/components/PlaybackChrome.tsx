@@ -12,6 +12,7 @@
  * phases. See TODO.md.
  */
 
+import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,6 +46,9 @@ interface PlaybackChromeProps {
   // Speed
   rate: PlaybackRate;
   onRate: (rate: PlaybackRate) => void;
+  /** Optional overlay rendered inside the chrome's fade region. Used
+   *  by Phase 2.2's DrawingToolbar so it auto-hides with the chrome. */
+  children?: ReactNode;
 }
 
 const ANIM_MS = 180;
@@ -64,6 +68,7 @@ export function PlaybackChrome({
   onSeekMs,
   rate,
   onRate,
+  children,
 }: PlaybackChromeProps) {
   const insets = useSafeAreaInsets();
   const opacity = useSharedValue(visible ? 1 : 0);
@@ -78,13 +83,17 @@ export function PlaybackChrome({
 
   return (
     <Animated.View
-      pointerEvents={visible ? 'auto' : 'none'}
+      // `box-none` so the empty middle of the screen passes touches
+      // through to the drawing canvas / player below; only the
+      // chrome's actual UI children (buttons, slider, toolbar) catch.
+      pointerEvents={visible ? 'box-none' : 'none'}
       style={[StyleSheet.absoluteFill, animatedStyle]}
     >
       {/* Top scrim + bar */}
       <View style={styles.topScrim} pointerEvents="none" />
       <View
         style={[styles.topBar, { paddingTop: insets.top + spacing[2] }]}
+        pointerEvents="box-none"
       >
         <Pressable
           onPress={onBack}
@@ -242,6 +251,8 @@ export function PlaybackChrome({
           })}
         </View>
       </View>
+
+      {children}
     </Animated.View>
   );
 }

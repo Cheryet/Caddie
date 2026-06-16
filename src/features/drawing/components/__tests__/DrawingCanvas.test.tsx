@@ -11,19 +11,34 @@ import { render } from '@testing-library/react-native';
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
+  // Each Gesture.* factory returns a chainable builder where every
+  // method returns the builder so .activeOffsetX().onStart()... is
+  // legal. The actual gesture behavior isn't exercised in JSDOM.
+  const makeBuilder = () => {
+    const builder: Record<string, (...args: unknown[]) => unknown> = {};
+    const methods = [
+      'enabled',
+      'maxDistance',
+      'activeOffsetX',
+      'activeOffsetY',
+      'onBegin',
+      'onStart',
+      'onUpdate',
+      'onEnd',
+      'onFinalize',
+    ];
+    methods.forEach(m => {
+      builder[m] = () => builder;
+    });
+    return builder;
+  };
   return {
     GestureDetector: ({ children }: { children: React.ReactNode }) =>
       React.createElement(View, { testID: 'gesture-detector' }, children),
     Gesture: {
-      Pan: () => {
-        const builder = {
-          enabled: () => builder,
-          onBegin: () => builder,
-          onUpdate: () => builder,
-          onFinalize: () => builder,
-        };
-        return builder;
-      },
+      Pan: () => makeBuilder(),
+      Tap: () => makeBuilder(),
+      Race: (..._builders: unknown[]) => makeBuilder(),
     },
   };
 });

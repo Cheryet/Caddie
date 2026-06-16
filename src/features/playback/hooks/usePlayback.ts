@@ -23,6 +23,12 @@ export const PLAYBACK_RATES: readonly PlaybackRate[] = [0.25, 0.5, 1] as const;
 interface UsePlaybackArgs {
   /** Seek the underlying player. Called by step / scrub handlers. */
   onSeek: (timeSec: number) => void;
+  /**
+   * When true, chrome stays visible regardless of the auto-hide timer.
+   * The drawing surface flips this on while the user is mid-stroke so
+   * controls don't fade out underneath their finger.
+   */
+  chromeLocked?: boolean;
 }
 
 interface UsePlaybackReturn {
@@ -54,7 +60,10 @@ interface UsePlaybackReturn {
 
 const CHROME_AUTO_HIDE_MS = 3000;
 
-export function usePlayback({ onSeek }: UsePlaybackArgs): UsePlaybackReturn {
+export function usePlayback({
+  onSeek,
+  chromeLocked = false,
+}: UsePlaybackArgs): UsePlaybackReturn {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentMs, setCurrentMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
@@ -63,6 +72,10 @@ export function usePlayback({ onSeek }: UsePlaybackArgs): UsePlaybackReturn {
 
   // Track the latest auto-hide timer so a new interaction can reset it.
   const autoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror chromeLocked in a ref so the auto-hide closure can read
+  // the current value without becoming a dep of every callback.
+  const lockedRef = useRef(chromeLocked);
+  lockedRef.current = chromeLocked;
 
   const clearAutoHide = useCallback(() => {
     if (autoHideTimer.current) {
@@ -73,6 +86,9 @@ export function usePlayback({ onSeek }: UsePlaybackArgs): UsePlaybackReturn {
 
   const scheduleAutoHide = useCallback(() => {
     clearAutoHide();
+    // Don't even queue a hide when chrome is locked — the moment it
+    // unlocks we'll schedule a fresh timer below.
+    if (lockedRef.current) return;
     autoHideTimer.current = setTimeout(() => {
       setChromeVisible(false);
     }, CHROME_AUTO_HIDE_MS);
@@ -83,6 +99,17 @@ export function usePlayback({ onSeek }: UsePlaybackArgs): UsePlaybackReturn {
     scheduleAutoHide();
     return clearAutoHide;
   }, [scheduleAutoHide, clearAutoHide]);
+
+  // When `chromeLocked` flips on, cancel any pending hide and make
+  // sure the chrome is visible. When it flips off, restart the timer.
+  useEffect(() => {
+    if (chromeLocked) {
+      clearAutoHide();
+      setChromeVisible(true);
+    } else {
+      scheduleAutoHide();
+    }
+  }, [chromeLocked, clearAutoHide, scheduleAutoHide]);
 
   const play = useCallback(() => {
     setIsPlaying(true);
