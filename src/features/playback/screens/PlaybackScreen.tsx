@@ -23,11 +23,13 @@ import { Toast } from '@/components/ui';
 import { DrawingCanvas } from '@/features/drawing/components/DrawingCanvas';
 import { DrawingToolbar } from '@/features/drawing/components/DrawingToolbar';
 import { useDrawing } from '@/features/drawing/hooks/useDrawing';
+import { useDrawingPersistence } from '@/features/drawing/hooks/useDrawingPersistence';
 import { PlaybackChrome } from '@/features/playback/components/PlaybackChrome';
 import { VideoPlayer } from '@/features/playback/components/VideoPlayer';
 import type { VideoPlayerHandle } from '@/features/playback/components/VideoPlayer';
 import { useVideoSource } from '@/features/playback/hooks/useVideoSource';
 import { usePlayback } from '@/features/playback/hooks/usePlayback';
+import { useShareSwing } from '@/features/playback/hooks/useShareSwing';
 import { useAppStore } from '@/store/useAppStore';
 import { uploadRecording } from '@/utils/upload';
 import { formatRelativeDate } from '@/utils/relativeTime';
@@ -48,10 +50,27 @@ export function PlaybackScreen({
   const params = route.params;
   const source = useVideoSource(params);
   const playerRef = useRef<VideoPlayerHandle>(null);
+  // Capture target: a single View wrapping the video + canvas. The
+  // share flow snapshots this ref via react-native-view-shot so the
+  // exported JPEG includes both the current frame and the overlay.
+  const captureRef = useRef<View>(null);
 
   // Drawing canvas state (Phase 2.2). Declared before usePlayback so
   // we can lock the chrome visible while a stroke is in flight.
   const drawing = useDrawing();
+  // Persistence (Phase 2.4) — loads saved drawings on mount when this
+  // is a library video; debounce-writes on any shapes change.
+  const persistedVideoId = 'videoId' in params ? params.videoId : null;
+  useDrawingPersistence({
+    videoId: persistedVideoId,
+    canvasSize: drawing.canvasSize,
+    shapes: drawing.shapes,
+    onLoaded: drawing.hydrate,
+  });
+  // Share (Phase 2.4) — captures the player+canvas into a JPEG and
+  // opens the iOS share sheet.
+  const shareSwing = useShareSwing(captureRef);
+
   const playback = usePlayback({
     onSeek: (timeSec: number) => playerRef.current?.seek(timeSec),
     // Chrome stays visible while:
@@ -114,11 +133,10 @@ export function PlaybackScreen({
   }, [navigation]);
 
   const handleShare = useCallback(() => {
-    Toast.show({
-      message: 'Share lands in the next update.',
-      variant: 'info',
+    shareSwing.share().catch(() => {
+      // Errors are toasted inside the hook; nothing more to do here.
     });
-  }, []);
+  }, [shareSwing]);
 
   // ─── Body branches ────────────────────────────────────────────────────
   if (source.error) {
@@ -136,36 +154,42 @@ export function PlaybackScreen({
 
   return (
     <View style={styles.root}>
-      <Pressable onPress={playback.toggleChrome} style={styles.playerWrap}>
-        <VideoPlayer
-          ref={playerRef}
-          uri={source.uri}
-          paused={!playback.isPlaying}
-          rate={playback.rate}
-          onLoadedDurationMs={playback.setDuration}
-          onProgressMs={playback.setProgress}
-          onEnd={playback.onEnd}
-        />
-      </Pressable>
+      {/* `captureRef` wraps player + canvas so view-shot captures
+          both layers in a single JPEG (Phase 2.4 share). The
+          Pressable's onPress still fires through to the player
+          tap-to-toggle behaviour. */}
+      <View ref={captureRef} style={styles.playerWrap} collapsable={false}>
+        <Pressable onPress={playback.toggleChrome} style={styles.playerWrap}>
+          <VideoPlayer
+            ref={playerRef}
+            uri={source.uri}
+            paused={!playback.isPlaying}
+            rate={playback.rate}
+            onLoadedDurationMs={playback.setDuration}
+            onProgressMs={playback.setProgress}
+            onEnd={playback.onEnd}
+          />
+        </Pressable>
 
-      {/* Drawing layer sits above the player, below the chrome. When
-          no tool is selected it's transparent to touches so the
-          tap-to-toggle-chrome behavior is preserved. */}
-      <DrawingCanvas
-        enabled={drawing.enabled}
-        tool={drawing.tool}
-        shapes={drawing.shapes}
-        inProgress={drawing.inProgress}
-        onStrokeStart={drawing.onStrokeStart}
-        onStrokeMove={drawing.onStrokeMove}
-        onStrokeEnd={drawing.onStrokeEnd}
-        selectedShapeId={drawing.selectedShapeId}
-        onSize={drawing.setCanvasSize}
-        // Tool-aware tap chain: Angle / Select consume the tap; other
-        // tools fall through and chrome toggles via `onTap`.
-        onCanvasTap={drawing.onCanvasTap}
-        onTap={playback.toggleChrome}
-      />
+        {/* Drawing layer sits above the player, below the chrome. When
+            no tool is selected it's transparent to touches so the
+            tap-to-toggle-chrome behavior is preserved. */}
+        <DrawingCanvas
+          enabled={drawing.enabled}
+          tool={drawing.tool}
+          shapes={drawing.shapes}
+          inProgress={drawing.inProgress}
+          onStrokeStart={drawing.onStrokeStart}
+          onStrokeMove={drawing.onStrokeMove}
+          onStrokeEnd={drawing.onStrokeEnd}
+          selectedShapeId={drawing.selectedShapeId}
+          onSize={drawing.setCanvasSize}
+          // Tool-aware tap chain: Angle / Select consume the tap; other
+          // tools fall through and chrome toggles via `onTap`.
+          onCanvasTap={drawing.onCanvasTap}
+          onTap={playback.toggleChrome}
+        />
+      </View>
 
       <PlaybackChrome
         visible={playback.chromeVisible}

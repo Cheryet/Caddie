@@ -653,6 +653,52 @@ Open follow-ons for Phase 2.4:
 
 ---
 
+## Phase 2.4 — Drawing persistence + share — what's next
+
+**Status:** Phase 2.4 ships the §22 acceptance:
+- `useDrawingPersistence` loads saved drawings on `PlaybackScreen`
+  open (videoId path) and debounce-writes any change to
+  `videos.drawings` 1 second after it settles. Coordinates are
+  normalized to `[0,1]` on disk with a `v: 1` version marker.
+- `react-native-view-shot` installed; `useShareSwing` captures the
+  player + canvas into a JPEG and hands off to iOS Share Sheet
+  (which provides "Save Image" via the existing
+  `NSPhotoLibraryAddUsageDescription`).
+- Bad / unrecognized persisted JSON toasts "Could not load
+  annotations." and falls through to a blank canvas (no crash).
+
+Open follow-ons:
+
+1. **Persistence for the fresh-recording path.** `localUri` routes
+   skip persistence (no row yet). Once Phase 1.4's upload pipeline
+   commits a row, the user could re-open from the library and the
+   drawings would load — but if they leave the recording screen
+   without re-opening, the drawings are lost. Acceptable for v1;
+   revisit if user testing flags it.
+
+2. **Conflict resolution.** If two devices edit the same video's
+   `drawings`, last-writer-wins. Acceptable for a single-user MVP;
+   revisit when multi-device sync is on the menu.
+
+3. **Share format choice.** Currently always JPEG (quality 0.9).
+   PNG would preserve transparency; not relevant for a snapshot of
+   a video frame, so leaving JPEG.
+
+4. **Sharing while paused vs. playing.** `view-shot` captures
+   whatever is on-screen at the moment of `captureRef()`. If the
+   video is playing the captured frame may not be the one the user
+   intended. Phase 1.7 already pauses on most user interactions;
+   we may want to explicitly pause inside `share()` and resume
+   after to make the capture deterministic. TODO.
+
+5. **Schema migrations.** The `v: 1` marker lets us evolve the
+   persisted shape later. Phase 3+ pose data and Phase 4 analysis
+   results may grow the schema; the upgrade story is: increment
+   `v`, write a one-time forward migrator. Document this when
+   `v: 2` ships.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

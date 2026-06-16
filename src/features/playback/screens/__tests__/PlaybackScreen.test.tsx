@@ -97,6 +97,19 @@ jest.mock('@/features/drawing/components/DrawingCanvas', () => {
   };
 });
 
+// Persistence + share hooks reach for supabase + view-shot which
+// would otherwise pull in their native deps. Stub at the boundary so
+// the screen test stays focused on screen wiring.
+jest.mock('@/features/drawing/hooks/useDrawingPersistence', () => ({
+  useDrawingPersistence: jest.fn(),
+}));
+jest.mock('@/features/playback/hooks/useShareSwing', () => ({
+  useShareSwing: () => ({
+    share: jest.fn().mockResolvedValue(undefined),
+    isSharing: false,
+  }),
+}));
+
 const { __state: sourceState } = require('@/features/playback/hooks/useVideoSource');
 const { uploadRecording } = require('@/utils/upload') as {
   uploadRecording: jest.Mock;

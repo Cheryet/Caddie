@@ -88,6 +88,13 @@ interface UseDrawingReturn {
   setTool: (tool: Tool) => void;
   setColor: (color: Color) => void;
   setCanvasSize: (size: CanvasSize) => void;
+  /**
+   * Replace the committed shapes wholesale. Used by the persistence
+   * layer to load saved drawings on PlaybackScreen open. Resets
+   * selection + in-progress state so the canvas is a clean read of
+   * whatever was on disk.
+   */
+  hydrate: (shapes: DrawingState) => void;
   undo: () => void;
   clear: () => void;
   deleteSelected: () => void;
@@ -176,6 +183,13 @@ export function useDrawing(): UseDrawingReturn {
     setShapes(prev => prev.filter(s => s.id !== selectedShapeId));
     setSelectedShapeId(null);
   }, [selectedShapeId]);
+
+  const hydrate = useCallback((next: DrawingState) => {
+    setShapes(next);
+    setInProgress(null);
+    setPendingAngle(null);
+    setSelectedShapeId(null);
+  }, []);
 
   const undo = useCallback(() => {
     setShapes(prev => (prev.length === 0 ? prev : prev.slice(0, -1)));
@@ -388,6 +402,7 @@ export function useDrawing(): UseDrawingReturn {
     setTool,
     setColor,
     setCanvasSize,
+    hydrate,
     undo,
     clear,
     deleteSelected,

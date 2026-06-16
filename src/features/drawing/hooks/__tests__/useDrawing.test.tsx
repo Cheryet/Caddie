@@ -166,6 +166,33 @@ describe('useDrawing', () => {
     expect(result.current.shapes[0]?.color).toBe('red');
   });
 
+  it('hydrate replaces shapes and clears transient state', () => {
+    const { result } = renderHook(() => useDrawing());
+    act(() => result.current.setTool('line'));
+    act(() => result.current.onStrokeStart({ x: 0, y: 0 }));
+    // Don't end the stroke → leave inProgress set.
+    act(() => result.current.onStrokeMove({ x: 100, y: 100 }));
+    expect(result.current.inProgress).not.toBeNull();
+
+    act(() => {
+      result.current.hydrate([
+        {
+          id: 'loaded-1',
+          kind: 'line',
+          color: 'red',
+          start: { x: 5, y: 5 },
+          end: { x: 50, y: 50 },
+        },
+      ]);
+    });
+
+    expect(result.current.shapes).toHaveLength(1);
+    expect(result.current.shapes[0]?.id).toBe('loaded-1');
+    expect(result.current.inProgress).toBeNull();
+    expect(result.current.selectedShapeId).toBeNull();
+    expect(result.current.pendingAngle).toBeNull();
+  });
+
   it('switching tools cancels an in-flight angle', () => {
     const { result } = renderHook(() => useDrawing());
     act(() => result.current.setTool('angle'));

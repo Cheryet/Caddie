@@ -39,6 +39,8 @@
 	<string>Caddie records audio with your swings so coaching feedback can reference impact sound.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Caddie lets you pick existing swing videos from your photo library so you can run them through analysis.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Caddie can save annotated swing frames to your photo library when you share them.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>RCTNewArchEnabled</key>
