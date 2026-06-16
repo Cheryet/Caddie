@@ -385,6 +385,77 @@ surfaces one of the above. None blocks Phase 1.7 (Playback) or 1.8
 
 ---
 
+## Phase 1.7 — Video playback deferrals
+
+**Status:** Phase 1.7 ships the §22 acceptance: react-native-video
+player, custom transport (prev/play-pause/next), scrub slider,
+0.25× / 0.5× / 1× speed, chrome auto-hide at 3s with tap-to-toggle.
+Five design-bundle affordances are deliberately left out until their
+owning phases land.
+
+1. **Drawing toolbar** (right edge of `PlaybackScreen` in the design).
+   Phase 2.1 — Drawing canvas foundation.
+2. **Pose toggle pill** (top-left, below the top bar). Phase 3.2 —
+   Pose overlay.
+3. **"Analyse with AI" gold CTA** (centered above transport). Phase
+   4.3 — Analysis screen UI; gated by Pro per §11.
+4. **Impact frame marker** on the scrub track (the small amber tick
+   in `Design/Caddie Screens.dc.html` line 253). Phase 3.3 — Derived
+   pose metrics provides the impact-frame timestamp this marker
+   reads from.
+5. **Share current frame.** §4 line 82 lists it as MVP scope but it's
+   absent from §22 Phase 1.7 bullets. The top-bar share button
+   renders but only toasts "lands in the next update" — TODO when
+   we wire `react-native-view-shot` + `@react-native-camera-roll/
+   camera-roll` (both in the §8 dep table).
+
+**Revisit cadence:** items 1–4 land naturally as their phases ship.
+Item 5 (share) can land any time as a sub-feature; it doesn't gate
+other work.
+
+---
+
+## Phase 1.7 — Frame-step granularity (30fps assumption)
+
+**Status:** `FRAME_STEP_MS = 1000/30` in `src/constants/playback.ts`.
+That's correct for Vision Camera's default capture (60fps was
+mentioned in §4 line 60 but our Phase 1.3 default targetResolution
+uses 30fps — see `CameraScreen.tsx`). Imported videos from the photo
+library can be any fps.
+
+**Why deferred:** react-native-video v6's `onLoad` exposes asset
+`naturalSize` but not framerate. Reading the actual fps would
+require a native bridge (AVAsset's `nominalFrameRate`) or
+`react-native-create-thumbnail`-style probing. For Phase 1.7's
+"frame-by-frame scrub" spec language, 30fps is a safe baseline that
+matches our capture path.
+
+**Revisit when:** A user reports stepping feels off on an imported
+swing video they recorded at 60/120/240fps, or Phase 3.x adds pose
+sampling which requires accurate per-frame timing. Likely fix is a
+small native module that reads `AVAsset.nominalFrameRate` once at
+load time.
+
+---
+
+## Phase 1.7 — Top scrim falloff (linear-gradient parity)
+
+**Status:** Top and bottom scrims in `PlaybackChrome.tsx` use solid
+`rgba(0,0,0,0.72)` / `rgba(0,0,0,0.55)` instead of the design's
+`linear-gradient(180deg, ...)`. Visually similar but not identical —
+the design fades to transparent at the inner edge.
+
+**Why deferred:** RN has no built-in gradient. Faithful match needs
+`react-native-linear-gradient` or `expo-linear-gradient` (pulls in
+~50 KB native dep). Not worth a dep for the polish delta until we
+either add the dep for another feature or user testing flags it.
+
+**Revisit when:** Any other feature pulls in a gradient library, or
+the chrome reads visibly different from the design in a side-by-side
+review.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:
