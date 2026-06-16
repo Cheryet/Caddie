@@ -39,6 +39,45 @@ jest.mock('@/core/supabase/client', () => {
   return { supabase: { from: () => ({ insert }) }, __spies: { insert } };
 });
 
+// useImportVideo isn't relevant to these tests — stub it out so the
+// real implementation (which loads react-native-image-picker) doesn't
+// have to mount.
+jest.mock('@/features/library/hooks/useImportVideo', () => ({
+  useImportVideo: () => ({
+    start: jest.fn(),
+    isProcessing: false,
+    sheet: {
+      visible: false,
+      defaultClub: '7 Iron',
+      isUploading: false,
+      onConfirm: jest.fn(),
+      onDismiss: jest.fn(),
+    },
+  }),
+}));
+
+// useVideoManagement is a real consumer of the screen wiring; expose
+// its start() so the long-press test can assert it fires.
+jest.mock('@/features/library/hooks/useVideoManagement', () => {
+  const start = jest.fn();
+  const state = {
+    start,
+    editSheet: {
+      video: null,
+      isSaving: false,
+      onSave: jest.fn(),
+      onDismiss: jest.fn(),
+    },
+    deleteSheet: {
+      video: null,
+      isDeleting: false,
+      onConfirm: jest.fn(),
+      onDismiss: jest.fn(),
+    },
+  };
+  return { useVideoManagement: () => state, __mgmt: state };
+});
+
 const { __state: hookState } = require('@/features/library/hooks/useVideos') as {
   __state: {
     videos: Video[] | null;
@@ -47,6 +86,9 @@ const { __state: hookState } = require('@/features/library/hooks/useVideos') as 
     error: { code: string; message: string } | null;
     refresh: jest.Mock;
   };
+};
+const { __mgmt } = require('@/features/library/hooks/useVideoManagement') as {
+  __mgmt: { start: jest.Mock };
 };
 const { LibraryScreen } = require('../LibraryScreen');
 
@@ -87,9 +129,12 @@ function makeVideo(overrides: Partial<Video> = {}): Video {
     cameraAngle: 'face-on',
     swingHand: 'right',
     durationMs: 4200,
+    storagePath: 'user-1/vid-1.mp4',
+    thumbnailPath: 'user-1/vid-1.jpg',
     thumbnailUrl: 'https://public.example/thumb.jpg',
     hasAnalysis: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+    tags: [],
     ...overrides,
   };
 }
@@ -165,6 +210,23 @@ describe('LibraryScreen', () => {
     fireEvent.press(getByLabelText('Add swing'));
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
+  });
+
+  it('long-pressing a card opens the video management action sheet', () => {
+    const video = makeVideo({ id: 'vid-x' });
+    hookState.videos = [video];
+    hookState.isLoading = false;
+
+    const nav = makeNav();
+    const { getAllByRole } = renderScreen(
+      <LibraryScreen navigation={nav} route={{ key: 'k', name: 'Library' }} />,
+    );
+    const card = getAllByRole('button').find(node =>
+      String(node.props.accessibilityLabel ?? '').includes('7 Iron'),
+    );
+    expect(card).toBeTruthy();
+    fireEvent(card!, 'longPress');
+    expect(__mgmt.start).toHaveBeenCalledWith(video);
   });
 
   it('shows the DEV seed affordance in test/dev builds', () => {

@@ -35,10 +35,13 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Button, Toast } from '@/components/ui';
 import { supabase } from '@/core/supabase/client';
+import { DeleteConfirmSheet } from '@/features/library/components/DeleteConfirmSheet';
+import { EditVideoSheet } from '@/features/library/components/EditVideoSheet';
 import { ImportConfirmSheet } from '@/features/library/components/ImportConfirmSheet';
 import { VideoCard } from '@/features/library/components/VideoCard';
 import { LibrarySkeletonCard } from '@/features/library/components/LibrarySkeletonCard';
 import { useImportVideo } from '@/features/library/hooks/useImportVideo';
+import { useVideoManagement } from '@/features/library/hooks/useVideoManagement';
 import { useVideos, type Video } from '@/features/library/hooks/useVideos';
 import type { LibraryStackScreenProps } from '@/navigation/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -61,6 +64,7 @@ export function LibraryScreen({
   const { videos, isLoading, isRefreshing, error, refresh } = useVideos();
   const [isSeeding, setIsSeeding] = useState(false);
   const importer = useImportVideo({ onUploadComplete: refresh });
+  const management = useVideoManagement({ onMutationComplete: refresh });
 
   const openCamera = useCallback(() => {
     navigation.navigate('Camera');
@@ -93,18 +97,29 @@ export function LibraryScreen({
     [navigation],
   );
 
+  const onLongPressCard = useCallback(
+    (video: Video) => {
+      management.start(video);
+    },
+    [management],
+  );
+
   const onPressSeed = useCallback(async () => {
     if (!userId || isSeeding) return;
     setIsSeeding(true);
     const ts = Date.now();
     const fakeId = `dev-seed-${ts}`;
+    const clubType = '7 Iron';
     const { error: insertErr } = await supabase.from('videos').insert({
       id: fakeId,
       user_id: userId,
-      title: `Seed swing · ${ts}`,
+      // Default title mirrors the production upload path
+      // (src/utils/upload.ts) — just the club name; the date is
+      // rendered below on the card.
+      title: clubType,
       storage_path: `${userId}/${fakeId}.mp4`,
       thumbnail_path: null,
-      club_type: '7 Iron',
+      club_type: clubType,
       camera_angle: 'face-on',
       swing_hand: 'right',
       duration_ms: 4200,
@@ -194,7 +209,11 @@ export function LibraryScreen({
                 { paddingBottom: COLUMN_GAP },
               ]}
             >
-              <VideoCard video={item} onPress={onPressCard} />
+              <VideoCard
+                video={item}
+                onPress={onPressCard}
+                onLongPress={onLongPressCard}
+              />
             </View>
           )}
         />
@@ -206,6 +225,20 @@ export function LibraryScreen({
         isUploading={importer.sheet.isUploading}
         onConfirm={importer.sheet.onConfirm}
         onDismiss={importer.sheet.onDismiss}
+      />
+
+      <EditVideoSheet
+        video={management.editSheet.video}
+        isSaving={management.editSheet.isSaving}
+        onSave={management.editSheet.onSave}
+        onDismiss={management.editSheet.onDismiss}
+      />
+
+      <DeleteConfirmSheet
+        video={management.deleteSheet.video}
+        isDeleting={management.deleteSheet.isDeleting}
+        onConfirm={management.deleteSheet.onConfirm}
+        onDismiss={management.deleteSheet.onDismiss}
       />
 
       {importer.isProcessing && !importer.sheet.visible ? (

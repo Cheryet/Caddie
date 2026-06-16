@@ -153,7 +153,10 @@ export async function uploadRecording(
   const { error: insertError } = await supabase.from('videos').insert({
     id: videoId,
     user_id: input.userId,
-    title: `${input.clubType} · ${formatToday()}`,
+    // Default to the club name only — the LibraryScreen card shows
+    // a relative date on its second line, so embedding the date here
+    // would double up. Users can rename via the Edit details sheet.
+    title: input.clubType,
     storage_path: videoUpload.data!.storagePath,
     thumbnail_path: thumbUpload.data!.storagePath,
     camera_angle: input.angle,
@@ -197,12 +200,3 @@ function errMessage(err: unknown): string | undefined {
   return undefined;
 }
 
-function formatToday(): string {
-  // Use the local-date label that golfers will recognise: "Mar 5".
-  // Keeping format inline (single use) — date-fns lands later.
-  const now = new Date();
-  return now.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
-}

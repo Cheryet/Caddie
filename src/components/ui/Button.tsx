@@ -22,7 +22,7 @@ import Animated, {
 
 import { colors, layout, spacing, typography } from '@/theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -179,6 +179,17 @@ const VARIANT_STYLES: Record<ButtonVariant, VariantStyle> = {
     },
     label: colors.text.secondary,
     spinner: colors.text.secondary,
+  },
+  // Destructive — Apple HIG pattern for irreversible actions (delete,
+  // sign out). Uses `semantic.error` as the fill with inverse text;
+  // pairs with a neutral "Cancel" button per platform conventions.
+  destructive: {
+    container: {
+      backgroundColor: colors.semantic.error,
+      borderWidth: 0,
+    },
+    label: colors.text.inverse,
+    spinner: colors.text.inverse,
   },
 };
 

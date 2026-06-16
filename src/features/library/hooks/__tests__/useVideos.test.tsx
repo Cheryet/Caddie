@@ -54,9 +54,11 @@ const baseRow = {
   camera_angle: 'face-on',
   swing_hand: 'right',
   duration_ms: 4200,
+  storage_path: 'user-1/vid-1.mp4',
   thumbnail_path: 'user-1/vid-1.jpg',
   has_analysis: true,
   created_at: '2026-06-15T11:00:00.000Z',
+  tags: null,
 };
 
 beforeEach(() => {

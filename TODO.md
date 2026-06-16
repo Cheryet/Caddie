@@ -456,6 +456,66 @@ review.
 
 ---
 
+## Phase 1.8 — Orphan Storage cleanup job
+
+**Status:** `useVideoManagement.onConfirmDelete` deletes the `videos`
+row first, then fires `deleteVideo` + `deleteThumbnail` in the
+background (Promise.all, errors swallowed with a `__DEV__` warn). If
+Storage delete fails the row is already gone, so the user-visible
+state is correct but the bucket holds an orphan file.
+
+**Why deferred:** Failures here are rare in practice (network blip
+after the row delete succeeded). Building a reconciliation job
+requires either a Supabase scheduled function or a client-side
+"orphan probe" — both are larger than Phase 1.8 scope.
+
+**Revisit when:** Pre-TestFlight, or earlier if Storage costs
+suggest we're paying for noticeable orphans. Two reasonable shapes:
+
+1. **Server-side**: a Supabase Edge Function scheduled nightly that
+   lists `storage.objects` and removes any whose path doesn't
+   correspond to a row in `videos`. Single source of truth.
+2. **Client-side**: on app launch, list the user's videos bucket,
+   diff against `videos` rows, fire `deleteVideo` for the orphans.
+   Simpler but only runs when the user opens the app.
+
+The server-side path is preferred — it stays correct even if a
+user uninstalls.
+
+---
+
+## Phase 1.8 — Edit/Delete deferrals
+
+**Status:** Phase 1.8 ships the §22 acceptance: long-press → action
+sheet → Edit or Delete sheet → Supabase update / row delete +
+Storage delete, plus tags as a comma-separated `string[]`. Three
+adjacent improvements stayed out:
+
+1. **Chip-based tag entry.** Comma-separated text input ships for
+   v1. Chip UI (type → enter → chip) is friendlier but ~80 LOC and
+   needs a design pass. Defer until the tags column is genuinely
+   surfaced anywhere — currently it's stored but not yet displayed
+   on cards or in a filter (the library filter chips were also
+   deferred from Phase 1.5).
+
+2. **Haptic on long-press.** iOS-native context menus fire a haptic
+   when they spring open; our `onLongPress` does not. `react-native-
+   haptic-feedback` is listed in §8 line 248 but not yet installed.
+   Defer until Haptics lands as a cross-cutting concern.
+
+3. **Optimistic UI on delete.** Today we `await refresh()` after the
+   row delete, which re-fetches the full grid. The card stays
+   visible for the round-trip. Optimistic removal (pop the item
+   from local state immediately) would feel snappier but requires
+   coupling `useVideos` to `useVideoManagement` more tightly than
+   v1 needs.
+
+**Revisit when:** Optimistic delete is worth doing if users report
+a perceptible delay between tap → card-gone. Haptic should land
+with whatever other phase adds the dep first.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

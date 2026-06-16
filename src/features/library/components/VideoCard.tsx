@@ -29,6 +29,8 @@ import { formatRelativeDate } from '@/utils/relativeTime';
 interface VideoCardProps {
   video: Video;
   onPress: (video: Video) => void;
+  /** Long-press opens the management action sheet (Phase 1.8). */
+  onLongPress?: (video: Video) => void;
 }
 
 function formatDuration(ms: number | null): string {
@@ -39,7 +41,7 @@ function formatDuration(ms: number | null): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function VideoCard({ video, onPress }: VideoCardProps) {
+export function VideoCard({ video, onPress, onLongPress }: VideoCardProps) {
   const relativeDate = useMemo(
     () => formatRelativeDate(video.createdAt),
     [video.createdAt],
@@ -48,13 +50,20 @@ export function VideoCard({ video, onPress }: VideoCardProps) {
     () => formatDuration(video.durationMs),
     [video.durationMs],
   );
-  const clubLabel = video.clubType ?? video.title;
+  // Title is the user-editable card label (defaults to the club name
+  // on upload, see `src/utils/upload.ts`). When the user customises
+  // it from Edit details, this is the field the change appears in.
+  // Fallback chain handles legacy rows where title might be empty.
+  const cardLabel = video.title?.trim() || video.clubType || 'Swing';
 
   return (
     <Pressable
       onPress={() => onPress(video)}
+      onLongPress={onLongPress ? () => onLongPress(video) : undefined}
+      delayLongPress={400}
       accessibilityRole="button"
-      accessibilityLabel={`${clubLabel}, ${relativeDate || 'recent'}`}
+      accessibilityLabel={`${cardLabel}, ${relativeDate || 'recent'}`}
+      accessibilityHint={onLongPress ? 'Double tap to play, long-press for options' : undefined}
       style={styles.root}
     >
       <View style={styles.thumb}>
@@ -93,7 +102,7 @@ export function VideoCard({ video, onPress }: VideoCardProps) {
 
       <View style={styles.meta}>
         <Text style={styles.club} numberOfLines={1}>
-          {clubLabel}
+          {cardLabel}
         </Text>
         {relativeDate ? (
           <Text style={styles.date} numberOfLines={1}>

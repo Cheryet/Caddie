@@ -30,9 +30,15 @@ export interface Video {
   cameraAngle: 'face-on' | 'dtl' | null;
   swingHand: 'right' | 'left';
   durationMs: number | null;
+  /** Bucket-relative path inside `videos` storage, e.g. `{user}/{id}.mp4`. */
+  storagePath: string;
+  /** Bucket-relative path inside `thumbnails` storage, or null if absent. */
+  thumbnailPath: string | null;
+  /** Resolved public URL for the thumbnail (null when thumbnailPath is). */
   thumbnailUrl: string | null;
   hasAnalysis: boolean;
   createdAt: string;
+  tags: string[];
 }
 
 // ───── Row validation ────────────────────────────────────────────────────
@@ -45,9 +51,11 @@ const RowSchema = z.object({
   camera_angle: z.string().nullable(),
   swing_hand: z.string(),
   duration_ms: z.number().nullable(),
+  storage_path: z.string(),
   thumbnail_path: z.string().nullable(),
   has_analysis: z.boolean().nullable(),
   created_at: z.string().nullable(),
+  tags: z.array(z.string()).nullable(),
 });
 
 function rowToVideo(row: z.infer<typeof RowSchema>): Video {
@@ -71,9 +79,12 @@ function rowToVideo(row: z.infer<typeof RowSchema>): Video {
     cameraAngle: angle,
     swingHand: hand,
     durationMs: row.duration_ms,
+    storagePath: row.storage_path,
+    thumbnailPath: row.thumbnail_path,
     thumbnailUrl,
     hasAnalysis: row.has_analysis ?? false,
     createdAt: row.created_at ?? new Date(0).toISOString(),
+    tags: row.tags ?? [],
   };
 }
 
@@ -93,7 +104,7 @@ interface UseVideosReturn {
 }
 
 const COLUMNS =
-  'id,title,club_type,camera_angle,swing_hand,duration_ms,thumbnail_path,has_analysis,created_at';
+  'id,title,club_type,camera_angle,swing_hand,duration_ms,storage_path,thumbnail_path,has_analysis,created_at,tags';
 
 export function useVideos(): UseVideosReturn {
   const userId = useAppStore(s => s.user?.id ?? null);
