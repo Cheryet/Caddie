@@ -15,6 +15,10 @@ const baseProps = {
   onToolChange: jest.fn(),
   canUndo: false,
   onUndo: jest.fn(),
+  color: 'white' as const,
+  onColorChange: jest.fn(),
+  canDelete: false,
+  onDelete: jest.fn(),
 };
 
 beforeEach(() => {

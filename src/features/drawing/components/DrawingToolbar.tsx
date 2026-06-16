@@ -14,11 +14,13 @@
  * mode so the player's tap-to-toggle-chrome behaviour still works.
  */
 
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle as SvgCircle, Line, Path, Polyline } from 'react-native-svg';
 
 import { colors, layout } from '@/theme';
-import type { Tool } from '@/features/drawing/types';
+import { ColorPicker } from '@/features/drawing/components/ColorPicker';
+import type { Color, Tool } from '@/features/drawing/types';
 
 const CHROME_BG = 'rgba(12,12,12,0.6)';
 const CHROME_BORDER = 'rgba(255,255,255,0.1)';
@@ -33,6 +35,12 @@ interface DrawingToolbarProps {
   /** Visible only when there are committed shapes. */
   canUndo: boolean;
   onUndo: () => void;
+  /** Current draw color; the dot in the toolbar reflects this. */
+  color: Color;
+  onColorChange: (color: Color) => void;
+  /** Visible only when a shape is selected (Select tool). */
+  canDelete: boolean;
+  onDelete: () => void;
 }
 
 export function DrawingToolbar({
@@ -40,7 +48,12 @@ export function DrawingToolbar({
   onToolChange,
   canUndo,
   onUndo,
+  color,
+  onColorChange,
+  canDelete,
+  onDelete,
 }: DrawingToolbarProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <View
       style={styles.root}
@@ -70,11 +83,35 @@ export function DrawingToolbar({
 
       <View style={styles.divider} />
 
-      {/* Color dot — Phase 2.3 wires the picker. White is the
-          default annotation color (per design, matches colors.drawing.white). */}
-      <View style={styles.colorButton} accessibilityLabel="Color (white)">
-        <View style={styles.colorDot} />
-      </View>
+      {/* Color dot — tap to open the 4-swatch picker. The dot's fill
+          reflects the currently-selected draw color. */}
+      <Pressable
+        onPress={() => setPickerOpen(o => !o)}
+        accessibilityRole="button"
+        accessibilityLabel={`Color (${color})`}
+        accessibilityState={{ expanded: pickerOpen }}
+        style={styles.colorButton}
+        hitSlop={6}
+      >
+        <View
+          style={[
+            styles.colorDot,
+            { backgroundColor: colors.drawing[color] },
+          ]}
+        />
+      </Pressable>
+
+      {canDelete ? (
+        <Pressable
+          onPress={onDelete}
+          accessibilityLabel="Delete selected shape"
+          accessibilityRole="button"
+          style={styles.toolButton}
+          hitSlop={6}
+        >
+          <TrashIcon />
+        </Pressable>
+      ) : null}
 
       {canUndo ? (
         <Pressable
@@ -86,6 +123,18 @@ export function DrawingToolbar({
         >
           <UndoIcon />
         </Pressable>
+      ) : null}
+
+      {pickerOpen ? (
+        <View style={styles.pickerAnchor} pointerEvents="box-none">
+          <ColorPicker
+            current={color}
+            onSelect={next => {
+              onColorChange(next);
+              setPickerOpen(false);
+            }}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -197,6 +246,36 @@ function AngleIcon() {
   );
 }
 
+// Standard trash glyph — lid + body + 3 vertical strokes.
+function TrashIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 7h16"
+        stroke={ICON_ACTIVE}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+        stroke={ICON_ACTIVE}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"
+        stroke={ICON_ACTIVE}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Line x1={10} y1={11} x2={10} y2={17} stroke={ICON_ACTIVE} strokeWidth={2} strokeLinecap="round" />
+      <Line x1={14} y1={11} x2={14} y2={17} stroke={ICON_ACTIVE} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 // Standard "undo" glyph — left-pointing arrow curving back around.
 function UndoIcon() {
   return (
@@ -273,7 +352,6 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.drawing.white,
     // 2-layer shadow ring per design (inner white-25%, outer black-60%).
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.25)',
@@ -281,6 +359,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
+  },
+  // Anchors the popover to the LEFT of the toolbar so it doesn't
+  // overlap the buttons. Negative right offset shifts it past the
+  // toolbar's outer edge.
+  pickerAnchor: {
+    position: 'absolute',
+    right: 60,
+    top: '50%',
+    transform: [{ translateY: -80 }],
   },
 });
 

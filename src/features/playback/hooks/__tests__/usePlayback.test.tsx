@@ -110,7 +110,7 @@ describe('usePlayback', () => {
     expect(result.current.chromeVisible).toBe(true);
   });
 
-  it('chromeLocked suppresses auto-hide and forces visibility', () => {
+  it('chromeLocked suppresses auto-hide and forces visibility (covers Angle-tool case)', () => {
     const { result, rerender } = renderHook(
       ({ locked }: { locked: boolean }) =>
         usePlayback({ onSeek, chromeLocked: locked }),

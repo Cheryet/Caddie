@@ -20,19 +20,21 @@
  * persisting (so saved drawings replay on any device width).
  */
 
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   Gesture,
   GestureDetector,
 } from 'react-native-gesture-handler';
 import Svg from 'react-native-svg';
-import { runOnJS } from 'react-native-reanimated';
 
 import { ShapeView } from '@/features/drawing/components/Shapes';
 import type {
+  CanvasSize,
   DrawingState,
   Point,
   Shape,
+  ShapeId,
   Tool,
 } from '@/features/drawing/types';
 
@@ -45,17 +47,23 @@ interface DrawingCanvasProps {
   shapes?: DrawingState;
   /** The stroke currently being drawn, if any. */
   inProgress?: Shape | null;
+  /** Id of the selected shape (Select tool). */
+  selectedShapeId?: ShapeId | null;
   onStrokeStart: (point: Point) => void;
   onStrokeMove: (point: Point) => void;
   onStrokeEnd: () => void;
   /**
-   * Fired on a quick tap (no significant movement). When `enabled` is
-   * true the canvas captures all touches, so this is the hook the
-   * parent uses to keep the player's tap-to-toggle-chrome behaviour
-   * working in drawing mode. Pan with a movement threshold takes
-   * precedence over Tap when the user actually drags.
+   * Tap on the canvas. Return `true` to absorb the tap (e.g. the
+   * Angle tool placed a point, or the Select tool selected/cleared
+   * a shape); `false` to let the parent fall through to the
+   * chrome-toggle behaviour. Receives the tap location in canvas-
+   * local pixels.
    */
+  onCanvasTap?: (point: Point) => boolean;
+  /** Called by the parent when our consume-tap returned false. */
   onTap?: () => void;
+  /** Driven by onLayout — needed for PlaneShape edge extension. */
+  onSize?: (size: CanvasSize) => void;
 }
 
 const PAN_ACTIVATION_THRESHOLD_PX = 5;
@@ -65,34 +73,46 @@ export function DrawingCanvas({
   tool,
   shapes = [],
   inProgress = null,
+  selectedShapeId = null,
   onStrokeStart,
   onStrokeMove,
   onStrokeEnd,
+  onCanvasTap,
   onTap,
+  onSize,
 }: DrawingCanvasProps) {
   // Show endpoint handles on committed lines when the Line tool is
   // active — affordance for the endpoint-drag behaviour.
   const showLineEndpoints = tool === 'line';
-  // RNGH gesture handlers run on the UI thread. `runOnJS` is the
-  // bridge for calling our JS callbacks; without it the handler would
-  // throw "Tried to synchronously call function from a different
-  // thread". The callbacks themselves are plain JS — Reanimated only
-  // provides the bridge function.
-  //
-  // Compose Tap + Pan so a quick tap (without movement) toggles the
-  // chrome via `onTap`, while a drag past PAN_ACTIVATION_THRESHOLD_PX
-  // starts a stroke. Without the threshold every tap would register
-  // as a degenerate stroke and the user could never reach the player
-  // tap-to-toggle behaviour through an active drawing tool.
+  // Track canvas dimensions for the PlaneShape renderer.
+  const [size, setSize] = useState<CanvasSize>({ width: 0, height: 0 });
+  // Bridges the gesture's tap event to the consume-or-toggle chain:
+  // first ask the tool (Angle places points, Select hit-tests, others
+  // pass), then fall back to the parent's onTap (chrome toggle).
+  const handleTap = (point: Point) => {
+    if (onCanvasTap && onCanvasTap(point)) return;
+    onTap?.();
+  };
+
+  // `.runOnJS(true)` keeps gesture callbacks on the JS thread, which
+  // sidesteps Reanimated's worklet-runtime serialization of our
+  // closures. Without it, RNGH 3 routes gesture events through
+  // Reanimated's UIEventHandler — and any closure that captures
+  // unstable React-prop references can crash inside
+  // `JSIWorkletsModuleProxy::toOptimizedObject` (see Phase 2.3 fix).
+  // Our callbacks were already JS-only (all wrapped in runOnJS), so
+  // this is the simpler, equivalent path.
   const tap = Gesture.Tap()
+    .runOnJS(true)
     .enabled(enabled)
     .maxDistance(PAN_ACTIVATION_THRESHOLD_PX)
-    .onEnd((_e, success) => {
+    .onEnd((e, success) => {
       if (!success) return;
-      if (onTap) runOnJS(onTap)();
+      handleTap({ x: e.x, y: e.y });
     });
 
   const pan = Gesture.Pan()
+    .runOnJS(true)
     .enabled(enabled)
     .activeOffsetX([-PAN_ACTIVATION_THRESHOLD_PX, PAN_ACTIVATION_THRESHOLD_PX])
     .activeOffsetY([-PAN_ACTIVATION_THRESHOLD_PX, PAN_ACTIVATION_THRESHOLD_PX])
@@ -100,13 +120,13 @@ export function DrawingCanvas({
     // it instead of onBegin means a quick tap (which never activates
     // Pan) doesn't emit a stroke-start.
     .onStart(e => {
-      runOnJS(onStrokeStart)({ x: e.x, y: e.y });
+      onStrokeStart({ x: e.x, y: e.y });
     })
     .onUpdate(e => {
-      runOnJS(onStrokeMove)({ x: e.x, y: e.y });
+      onStrokeMove({ x: e.x, y: e.y });
     })
     .onEnd(() => {
-      runOnJS(onStrokeEnd)();
+      onStrokeEnd();
     });
 
   const gesture = Gesture.Race(pan, tap);
@@ -116,6 +136,14 @@ export function DrawingCanvas({
       style={styles.root}
       pointerEvents={enabled ? 'auto' : 'none'}
       accessibilityLabel={enabled ? 'Drawing canvas' : undefined}
+      onLayout={e => {
+        const next = {
+          width: e.nativeEvent.layout.width,
+          height: e.nativeEvent.layout.height,
+        };
+        setSize(next);
+        onSize?.(next);
+      }}
     >
       <GestureDetector gesture={gesture}>
         <Svg width="100%" height="100%">
@@ -124,10 +152,16 @@ export function DrawingCanvas({
               key={shape.id}
               shape={shape}
               showLineEndpoints={showLineEndpoints}
+              selected={shape.id === selectedShapeId}
+              canvasSize={size}
             />
           ))}
           {inProgress ? (
-            <ShapeView shape={inProgress} showLineEndpoints={false} />
+            <ShapeView
+              shape={inProgress}
+              showLineEndpoints={false}
+              canvasSize={size}
+            />
           ) : null}
         </Svg>
       </GestureDetector>

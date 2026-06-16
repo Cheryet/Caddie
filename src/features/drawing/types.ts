@@ -66,15 +66,50 @@ export interface FreehandShape extends ShapeBase {
   points: Point[];
 }
 
+export interface CircleShape extends ShapeBase {
+  kind: 'circle';
+  center: Point;
+  radius: number;
+}
+
+export interface PlaneShape extends ShapeBase {
+  kind: 'plane';
+  /** Two control points defining the line's direction. The rendered
+   *  plane extends through both points all the way to the canvas
+   *  edges; PlaneShape stays canonical regardless of canvas size. */
+  a: Point;
+  b: Point;
+}
+
+export interface AngleShape extends ShapeBase {
+  kind: 'angle';
+  vertex: Point;
+  end1: Point;
+  end2: Point;
+}
+
 /**
- * Currently-supported shapes. Phase 2.3 will extend this union with
- * `CircleShape`, `AngleShape`, `PlaneShape`. The `kind` discriminator
- * stays stable so persisted JSON written under one version still
- * parses in a later one (unknown kinds are dropped on read).
+ * The full discriminated union of committed shapes. New `kind`
+ * literals must keep the existing entries stable so persisted JSON
+ * (Phase 2.4) written under one version still parses in a later one
+ * — unknown kinds are dropped on read by the Zod schema.
  */
-export type Shape = LineShape | FreehandShape;
+export type Shape =
+  | LineShape
+  | FreehandShape
+  | CircleShape
+  | PlaneShape
+  | AngleShape;
 
 export type DrawingState = Shape[];
 
 /** Pixel radius for hit-testing line endpoints (Phase 2.2 endpoint drag). */
 export const ENDPOINT_HIT_RADIUS = 20;
+
+/** Pixel radius for general select-tool hit-testing (Phase 2.3). */
+export const SELECT_HIT_RADIUS = 14;
+
+export interface CanvasSize {
+  width: number;
+  height: number;
+}

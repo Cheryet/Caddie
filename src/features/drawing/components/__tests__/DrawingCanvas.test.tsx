@@ -26,6 +26,7 @@ jest.mock('react-native-gesture-handler', () => {
       'onUpdate',
       'onEnd',
       'onFinalize',
+      'runOnJS',
     ];
     methods.forEach(m => {
       builder[m] = () => builder;

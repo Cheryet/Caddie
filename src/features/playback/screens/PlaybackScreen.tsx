@@ -54,9 +54,15 @@ export function PlaybackScreen({
   const drawing = useDrawing();
   const playback = usePlayback({
     onSeek: (timeSec: number) => playerRef.current?.seek(timeSec),
-    // While mid-stroke the auto-hide pauses so controls don't fade
-    // out from under the user's finger.
-    chromeLocked: drawing.isStroking,
+    // Chrome stays visible while:
+    //   1. The user is mid-stroke (so controls don't fade out
+    //      from under their finger).
+    //   2. Angle tool is active. Angle is the one drawing tool that
+    //      genuinely needs every tap (3-tap placement), so the
+    //      tap-to-toggle-chrome chain can't reach. Locking the
+    //      chrome up means the toolbar stays reachable for the user
+    //      to switch tools and exit.
+    chromeLocked: drawing.isStroking || drawing.tool === 'angle',
   });
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: 'idle' });
@@ -153,10 +159,11 @@ export function PlaybackScreen({
         onStrokeStart={drawing.onStrokeStart}
         onStrokeMove={drawing.onStrokeMove}
         onStrokeEnd={drawing.onStrokeEnd}
-        // Forward quick taps to the same chrome toggle the player's
-        // Pressable handles when the canvas is disabled. Without
-        // this, tapping a drawing-enabled canvas would just create a
-        // degenerate stroke and the chrome would never toggle.
+        selectedShapeId={drawing.selectedShapeId}
+        onSize={drawing.setCanvasSize}
+        // Tool-aware tap chain: Angle / Select consume the tap; other
+        // tools fall through and chrome toggles via `onTap`.
+        onCanvasTap={drawing.onCanvasTap}
         onTap={playback.toggleChrome}
       />
 
@@ -181,6 +188,10 @@ export function PlaybackScreen({
           onToolChange={drawing.setTool}
           canUndo={drawing.shapes.length > 0}
           onUndo={drawing.undo}
+          color={drawing.color}
+          onColorChange={drawing.setColor}
+          canDelete={drawing.selectedShapeId !== null}
+          onDelete={drawing.deleteSelected}
         />
       </PlaybackChrome>
 

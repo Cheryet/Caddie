@@ -612,6 +612,47 @@ Several follow-on items belong to later phases:
 
 ---
 
+## Phase 2.3 — what's next
+
+**Status:** Phase 2.3 ships the §22 acceptance: circle / plane / angle
+/ select tools, 4-color picker popover from the toolbar's color dot,
+trash button in the toolbar when something is selected, and a
+gold-halo treatment on the selected shape. `useDrawing.onCanvasTap`
+returns a consumed boolean so Angle and Select absorb taps without
+toggling chrome.
+
+Open follow-ons for Phase 2.4:
+
+1. **Persistence + load.** Phase 2.4 normalizes shapes to [0,1] and
+   debounce-writes to `videos.drawings`. Loads on PlaybackScreen
+   open. Today shapes are in-memory only — leaving the screen drops
+   them.
+2. **Share current frame.** `react-native-view-shot` to capture the
+   video frame + SVG overlay and either save to camera roll or open
+   the share sheet. The top-bar share button currently only toasts
+   "coming soon".
+
+---
+
+## Phase 2.3 — selection deferrals
+
+- **Multi-select.** Single-shape selection only; lasso / shift-tap
+  multi-select would be useful for batch delete + move but isn't
+  in §22 scope.
+- **Plane endpoint drag.** Lines have draggable endpoints when the
+  Line tool is active; PlaneShape doesn't (yet). Consider adding
+  endpoint drag when Select is active and a plane is the selected
+  shape.
+- **Angle ray drag.** Same as plane — once an angle is committed,
+  rays can't be reshaped. Drag-to-edit would land alongside the
+  same Select-mode endpoint affordance.
+- **Color picker dismiss-on-outside-tap.** Currently the popover
+  dismisses when a swatch is selected; tapping elsewhere on the
+  screen doesn't close it. Acceptable since the popover is small;
+  revisit if user testing flags it.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:
