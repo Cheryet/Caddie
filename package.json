@@ -19,6 +19,7 @@
     "@react-navigation/native-stack": "^7.17.3",
     "@shopify/flash-list": "^2.3.2",
     "@supabase/supabase-js": "^2.108.1",
+    "caddie-pose": "file:packages/caddie-pose",
     "date-fns": "^4.4.0",
     "react": "19.2.3",
     "react-native": "0.86.0",

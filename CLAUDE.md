@@ -39,7 +39,7 @@ Phases must be completed in the order specified in `PROJECT_SPEC.md` Section 22 
 ## Project at a glance
 
 - **Caddie** — premium iOS-only golf swing analysis app
-- **Stack**: Bare React Native + TypeScript 5.x strict, Supabase (Auth/Postgres/Storage), Claude Vision via Supabase Edge Function, MediaPipe Pose Landmarker (native iOS bridge), RevenueCat for subscriptions
+- **Stack**: Bare React Native + TypeScript 5.x strict, Supabase (Auth/Postgres/Storage), Claude Vision via Supabase Edge Function, Apple Vision body pose via local `caddie-pose` Obj-C bridge (replaces the spec's originally-named `react-native-mediapipe` per §16 Risk 4 — see TODO.md), RevenueCat for subscriptions
 - **State**: Zustand (auth/subscription/theme only) + per-feature hooks. **No Redux, no React Query.**
 - **Storage**: MMKV (not AsyncStorage)
 - **Lists**: `@shopify/flash-list` (not FlatList)

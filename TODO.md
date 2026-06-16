@@ -699,6 +699,144 @@ Open follow-ons:
 
 ---
 
+## Phase 3.1 — Pose engine swapped to Apple Vision (spec deviation)
+
+**Status:** Phase 3.1 ships working — `src/core/pose/` boots
+successfully on iOS sim and reports `'ready'`. The actual engine
+is **Apple Vision** (`VNDetectHumanBodyPoseRequest`), wired through
+a local RN package at `packages/caddie-pose/` that exposes
+`initialize()` + `detectOnImage(path)` via an Objective-C bridge.
+
+**Why we deviated from the spec's named MediaPipe package:**
+
+1. `react-native-mediapipe@0.6.0` targets Vision Camera 4's plugin
+   header layout; we're on VC5. Build failed with
+   `'VisionCamera/FrameProcessorPlugin.h' file not found`.
+2. The package also requires `react-native-worklets-core` (not the
+   `react-native-worklets` we have from Reanimated 4).
+3. The package's whole architecture is built for live-camera frame
+   processors — but our spec wants per-frame inference on recorded
+   video during scrub (Phase 3.2). The frame-processor machinery
+   would be unused machinery we'd still have to maintain.
+
+PROJECT_SPEC.md §16 Risk 4 explicitly contemplates a direct native
+bridge as the fallback. We took that path with Apple Vision instead
+of MediaPipe iOS SDK because:
+   - Apple Vision is built into iOS (0 MB binary cost vs ~50 MB
+     for MediaPipe SDK + model file).
+   - 19 body landmarks covers every joint the spec's §22 Phase 3.3
+     metrics need: shoulders, elbows, wrists, hips, knees, ankles,
+     hands, head, spine.
+   - Zero third-party risk — Apple isn't deprecating Vision.
+
+**Migration path back to MediaPipe** (if ever needed):
+   - Only `packages/caddie-pose/` changes. The `src/core/pose/`
+     abstraction stays.
+   - Replace the ObjC bridge with one that loads
+     `pose_landmarker_lite.task` and calls Google's
+     `MediaPipeTasksVision` SDK.
+   - 33 landmarks instead of 19 — would need to expand the
+     landmark-name map (Phase 3.2's `landmarks.ts`).
+
+**Engine internals worth knowing:**
+   - `CaddiePose.m` in `packages/caddie-pose/ios/` runs detection
+     on a dedicated serial dispatch queue so the JS thread stays
+     responsive.
+   - Vision normalises Y bottom-up; the bridge flips it so y=0 is
+     top, matching our SVG / DrawingCanvas convention.
+   - Landmark names come through as Vision's raw joint names
+     (`left_shoulder_1_joint`, etc.). Phase 3.2 will add
+     `src/core/pose/landmarks.ts` to map to a stable schema
+     (`leftShoulder`, etc.) before consumers see them.
+
+**Phase 3.2 picks up from here:**
+   - The abstraction's `detectPose(imagePath)` is wired and ready.
+   - Build the `PoseOverlay` SVG component that subscribes to
+     `usePoseStatus`, calls `detectPose` on the current frame,
+     renders the skeleton.
+   - Add the landmark-name map for stable schema.
+   - Toggle on/off in the playback chrome.
+
+---
+
+## Future feature — Video trim / clip-to-swing
+
+**Status:** Not scoped to any current phase. Captured as a user
+suggestion worth doing.
+
+**Why it matters** (more than just UX polish):
+
+1. **Storage cost.** Uncropped imports can be 30–60s of which only
+   2–4s is the actual swing. At average 8–12 MB/swing (§13),
+   trimming 2x reduces our Supabase Storage spend by the same
+   factor.
+2. **Analysis quality.** Phase 4's Claude Vision pipeline extracts
+   8 canonical frames (Phase 4.2 §14 frame extraction strategy).
+   If the source clip is 80% pre-swing fidgeting, the canonical-
+   position detection hits the wrong frames and the AI gets
+   useless inputs. Trim-first → analysis is dramatically more
+   accurate.
+3. **Pose-detection compute.** Phase 3.2 will run pose detection
+   per-frame on scrub. Less video = less wasted inference.
+4. **Playback UX.** Scrub bar covers the swing motion, not the
+   walk-up. Frame-step buttons get to "address position" in 1 tap
+   instead of 20.
+
+**Where the affordance fits:**
+
+a. **Inline in `EditVideoSheet`** (Phase 1.8) — add a "Trim swing"
+   row alongside title / club / hand / tags. Most discoverable;
+   matches the existing edit pattern.
+b. **As a step in the import flow** (Phase 1.6) — after the user
+   picks a video, present a trim step before the
+   `ImportConfirmSheet`. Bigger commitment; users see it for every
+   import.
+c. **Right after recording** (Phase 1.3) — auto-detect the swing
+   window via pose (Phase 3.2+) and pre-trim. The user can adjust.
+
+Option (a) is the cheapest first ship and stays user-initiated.
+Options (b) and (c) layer on later.
+
+**Implementation tradeoffs:**
+
+| Approach | Stored file size | Latency | Quality |
+|---|---|---|---|
+| Metadata-only trim (clip on playback) | Same as original | Instant | Lossless |
+| Re-encode trim (write a new file) | Smaller | ~2–10s per swing | Slight loss |
+
+For our goals (storage savings + analysis focus), **re-encode is
+the right call**. Use `react-native-video-trim` or call AVFoundation
+directly via a small Obj-C bridge (mirrors the `caddie-pose`
+pattern). The bridge would expose:
+
+```
+trimVideo(inputPath, startSec, endSec): Promise<{ uri, durationSec }>
+```
+
+Then plug the trimmed URI into the existing upload pipeline (no
+changes to `src/utils/upload.ts` needed).
+
+**Open questions for when this is picked up:**
+
+- Trim UI: standard iOS-style scrub-with-handles, or two-number
+  inputs? Standard handles are expected by iPhone users.
+- Hard or soft cap on max trimmed length? We currently cap at 60s
+  on input; trim could enforce ≤15s for analysis sanity.
+- Preview the trimmed range before commit, or trim-and-commit
+  in one tap?
+- For library-resident videos: trim creates a NEW file, replacing
+  the storage object — or keeps the original and adds a "trimmed"
+  derivative? Replacement is simpler; preservation is friendlier.
+
+**Suggested phase placement:** Phase 1.9 (new), inserted between
+1.8 (Video management) and 2.1 (Drawing canvas foundation) per
+the dependency map. The drawing/pose phases don't depend on it,
+so it could also slot in later — but doing it before AI analysis
+(Phase 4.x) means analysis ships against trimmed videos, which is
+a big quality win.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

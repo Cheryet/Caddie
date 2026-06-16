@@ -1,0 +1,18 @@
+{
+  "name": "caddie-pose",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Apple Vision pose detection bridge for Caddie.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "src",
+    "ios",
+    "CaddiePose.podspec"
+  ],
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  }
+}

@@ -14,7 +14,7 @@
 **Language**: TypeScript 5.x (strict mode, zero `any`)
 **Backend**: Supabase (Auth + Postgres + Storage)
 **AI Analysis**: Anthropic Claude Vision API (claude-sonnet-4-6)
-**On-device AI**: MediaPipe Pose Landmarker (native iOS bridge)
+**On-device AI**: Apple Vision body pose detection (Objective-C bridge in `packages/caddie-pose/`). Replaces the originally-named `react-native-mediapipe` per §16 Risk 4 — the package is incompatible with Vision Camera 5. Apple Vision is the engine for Phase 3.1; abstraction in `src/core/pose/` keeps a swap to MediaPipe a one-package change.
 **Subscriptions**: RevenueCat (StoreKit 2)
 
 Caddie is a premium iOS golf swing analysis application. Golfers record or import swing videos, receive AI-powered coaching feedback from Claude Vision, annotate swings with a professional drawing toolkit, compare swings side-by-side, and track measurable improvement over time.
@@ -89,7 +89,7 @@ MVP is the minimum set of features required to ship to TestFlight and validate t
 - Export frame + drawings as image
 
 ### Pose skeleton overlay
-- MediaPipe Pose Landmarker on-device
+- On-device body pose detection (Apple Vision; see §16 Risk 4)
 - Toggle skeleton on/off during playback
 - Golf-relevant landmarks highlighted (wrists, hips, shoulders)
 - Free feature — no subscription required
@@ -216,7 +216,7 @@ Screen
 Key events: video_recorded, video_imported, analysis_requested, analysis_completed, upgrade_prompt_shown, upgrade_tapped, subscription_started, drawing_tool_used, pose_overlay_toggled, comparison_started, screen_viewed.
 
 ### Monitoring
-**Sentry** for crash reporting. Performance tracing on: Claude Edge Function calls, video upload, MediaPipe init. Sourcemaps uploaded on every TestFlight build.
+**Sentry** for crash reporting. Performance tracing on: Claude Edge Function calls, video upload, pose-engine init + per-frame detection. Sourcemaps uploaded on every TestFlight build.
 
 ---
 
@@ -224,7 +224,7 @@ Key events: video_recorded, video_imported, analysis_requested, analysis_complet
 
 | Package | Version | Rationale |
 |---|---|---|
-| react-native | latest stable | Core. Bare workflow required for MediaPipe native bridge. |
+| react-native | latest stable | Core. Bare workflow required for the pose-engine native bridge. |
 | typescript | 5.x strict | Zero any. Enables confident refactoring at scale. |
 | react-native-screens | latest | Native screen containers. Required by React Navigation. |
 | react-native-safe-area-context | latest | iPhone notch and Dynamic Island insets. |
@@ -242,7 +242,7 @@ Key events: video_recorded, video_imported, analysis_requested, analysis_complet
 | react-native-view-shot | latest | Capture frame + drawing overlay as image. |
 | react-native-compressor | latest | Compress video before upload. Target 10 MB per 10s swing. |
 | @anthropic-ai/sdk | latest | Used in Supabase Edge Function only — not in the app bundle. |
-| react-native-mediapipe | latest | On-device MediaPipe Pose Landmarker. Native iOS bridge. |
+| caddie-pose (local) | 0.0.1 | On-device pose detection. Local RN package at `packages/caddie-pose/` wrapping Apple Vision via an Objective-C bridge. Replaces `react-native-mediapipe` per §16 Risk 4 (Vision Camera 5 incompatibility + bundle-size win). |
 | react-native-svg | latest | Drawing canvas and pose skeleton rendering. |
 | @shopify/flash-list | latest | High-performance lists. Replaces FlatList everywhere. |
 | react-native-haptic-feedback | latest | Haptics on key interactions. |
@@ -266,6 +266,7 @@ Key events: video_recorded, video_imported, analysis_requested, analysis_complet
 | react-native-fast-image | Replaced by built-in Image with Supabase CDN headers |
 | react-native-image-picker | Replaced by Vision Camera import capability |
 | react-native-create-thumbnail | Replaced by Vision Camera frame processor |
+| react-native-mediapipe | Incompatible with Vision Camera 5 (header rename); replaced by the local `caddie-pose` Apple Vision bridge. See §16 Risk 4. |
 
 ---
 
@@ -285,12 +286,20 @@ caddie/
 ├── PROJECT_SPEC.md
 ├── DESIGN_SYSTEM.md
 ├── ios/
+├── packages/
+│   └── caddie-pose/                  # Local RN package — Apple Vision Obj-C bridge (§16 Risk 4)
+│       ├── ios/CaddiePose.m
+│       ├── CaddiePose.podspec
+│       └── src/                      # JS surface consumed by src/core/pose/
 └── src/
     ├── core/                        # SDK wrappers — no UI, no React hooks
     │   ├── supabase/
     │   │   ├── client.ts
     │   │   ├── auth.ts
     │   │   └── storage.ts
+    │   ├── pose/                    # Pose engine abstraction (delegates to caddie-pose)
+    │   │   ├── client.ts
+    │   │   └── types.ts
     │   ├── revenuecat/
     │   │   ├── client.ts
     │   │   └── entitlements.ts
@@ -622,7 +631,7 @@ The Edge Function accepts from the app: `frames`, `cameraAngle`, `clubType`, `sw
 | Impact | Wrists lowest, hips most open |
 | Finish | Weight on lead foot |
 
-Fallback (MediaPipe unavailable): frames at 10%, 20%, 30%, 45%, 55%, 65%, 75%, 90% of duration.
+Fallback (pose engine unavailable): frames at 10%, 20%, 30%, 45%, 55%, 65%, 75%, 90% of duration.
 
 ### Prompt versioning
 System prompts versioned in `src/core/claude/prompts.ts`. Version stored in `analyses.prompt_version` column. This enables A/B testing and safe iteration without corrupting historical records.
@@ -996,19 +1005,26 @@ Mitigation: Edge Function proxy with server-side daily limit (10/user/day), mont
 
 Mitigation: Aggressive compression at upload (target 8 MB), per-user quota display in V1, consider soft/hard limits on free tier.
 
-### Risk 3 — MediaPipe performance on older devices
+### Risk 3 — Pose engine performance on older devices
 **Severity**: Medium | **Probability**: Low-Medium
 
-Pose Landmarker on every playback frame may cause drops on older A-series chips.
+Per-frame pose detection during scrub may cause drops on older A-series chips. Apple Vision's `VNDetectHumanBodyPoseRequest` is hardware-accelerated on iPhone XS+ but still has a per-frame cost.
 
 Mitigation: Target 30fps not 60fps for pose. Process every other frame under load. Detect capability; offer reduced quality mode. Minimum test device: iPhone XS (A12, 2018).
 
-### Risk 4 — react-native-mediapipe package maturity
-**Severity**: Medium | **Probability**: Medium
+### Risk 4 — Pose-engine package risk — RESOLVED via direct native bridge
+**Severity**: Medium | **Probability**: Medium | **Status**: MATERIALIZED + RESOLVED
 
-Community package may lag behind MediaPipe SDK, have unresolved bugs, or be abandoned.
+The originally-named `react-native-mediapipe` proved incompatible with Vision Camera 5 (header rename: `'VisionCamera/FrameProcessorPlugin.h' file not found`). It also peer-depends on `react-native-worklets-core` (separate from our `react-native-worklets`/Reanimated 4) and its frame-processor architecture is built for live camera streams — not the per-frame inference on recorded video that our Phase 3.2 / 4.2 needs.
 
-Mitigation: Audit GitHub before committing (issues, last commit, maintainer activity). Abstract behind `src/core/pose/` — if package needs replacing, only that module changes. Fallback: minimal native Objective-C bridge to MediaPipe iOS SDK directly.
+Mitigation (taken): The documented fallback ("minimal native Objective-C bridge") was implemented in `packages/caddie-pose/` as a local RN package — autolinked by CocoaPods, no main-target Xcode editing. The engine inside that bridge is **Apple Vision** (`VNDetectHumanBodyPoseRequest`) rather than MediaPipe iOS SDK, because:
+1. Vision is built into iOS (0 MB binary cost vs ~50 MB for MediaPipe SDK + `pose_landmarker_lite.task`)
+2. Vision's 19 body landmarks cover every joint required by §22 Phase 3.3 metrics (shoulders, hips, spine, head)
+3. Zero third-party risk — Apple doesn't deprecate Vision
+
+The abstraction in `src/core/pose/` is unchanged. If/when we want MediaPipe specifically (e.g., the 14 extra landmarks become useful), only `packages/caddie-pose/ios/CaddiePose.m` is rewritten — JS surface stays identical.
+
+See TODO.md for the full incident write-up and the swap-back-to-MediaPipe checklist.
 
 ### Risk 5 — App Store review friction
 **Severity**: Low-Medium | **Probability**: Low
@@ -1193,17 +1209,18 @@ SVG canvas overlays video player; touch events registered without conflicting wi
 
 ---
 
-### Phase 3.1 — MediaPipe initialisation
-MediaPipe Pose Landmarker initialised; failure handled gracefully.
-- Install react-native-mediapipe
-- Create src/core/pose/ abstraction layer
-- Init model on app launch (background thread)
+### Phase 3.1 — Pose engine initialisation
+On-device pose engine initialised; failure handled gracefully.
+- Install local `caddie-pose` package (Apple Vision Objective-C bridge; replaces `react-native-mediapipe` per §16 Risk 4)
+- Create `src/core/pose/` abstraction layer (engine-agnostic public API)
+- Init engine on app launch (background thread)
 - Failure disables pose features without crash
 
 ### Phase 3.2 — Pose overlay on playback
 Skeleton renders over video during scrubbing.
 - Build PoseOverlay component (SVG)
-- Run Pose Landmarker on current frame as user scrubs
+- Run pose detection on current frame as user scrubs
+- Add `src/core/pose/landmarks.ts` — map the engine's raw joint names to a stable schema (`leftShoulder`, etc.)
 - Golf-relevant landmarks highlighted
 - Toggle on/off in PlaybackScreen toolbar
 - React.memo, skip render if no landmarks
@@ -1227,7 +1244,7 @@ All Claude API calls go through server-side proxy; key never ships in app.
 ### Phase 4.2 — Frame extraction utility
 8 canonical frames extracted from any video.
 - Create src/utils/frameExtractor.ts
-- MediaPipe landmark-based position detection
+- Pose landmark-based position detection (via `@/core/pose`'s `detectPose`)
 - Fallback to evenly-spaced frames
 - Output: 8 JPEG base64 strings, max 1200px, quality 85
 

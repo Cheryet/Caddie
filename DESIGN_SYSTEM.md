@@ -635,7 +635,7 @@ Undo: shake gesture triggers undo of last shape. Also available as icon button.
 
 ## 14. Pose Overlay Rendering
 
-MediaPipe skeleton rendered as SVG overlay on top of VideoPlayer.
+Pose skeleton (Apple Vision joints via `@/core/pose`) rendered as SVG overlay on top of VideoPlayer.
 
 ### Visual style
 - Bones: 2px lines, `rgba(201, 168, 76, 0.6)` (gold, semi-transparent)

@@ -1156,7 +1156,7 @@ This is the order phases must be completed. Do not skip ahead.
                                                   │                                               └── 2.2 Line and freehand tools
                                                   │                                                     └── 2.3 Remaining drawing tools
                                                   │                                                           └── 2.4 Drawing persistence and export
-                                                  │                                                                 └── 3.1 MediaPipe initialisation
+                                                  │                                                                 └── 3.1 Pose engine initialisation
                                                   │                                                                       └── 3.2 Pose overlay
                                                   │                                                                             └── 3.3 Derived pose metrics
                                                   │                                                                                   └── 4.1 Edge Function

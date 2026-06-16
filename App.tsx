@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ToastHost } from '@/components/ui';
 import { AuthBootstrap } from '@/features/auth/components/AuthBootstrap';
+import { PoseBootstrap } from '@/features/pose/components/PoseBootstrap';
 import { RevenueCatBootstrap } from '@/features/subscription/components/RevenueCatBootstrap';
 import { UploadQueueBootstrap } from '@/features/uploads/components/UploadQueueBootstrap';
 import { RootNavigator } from '@/navigation/RootNavigator';
@@ -26,6 +27,7 @@ function App() {
         <AuthBootstrap />
         <RevenueCatBootstrap />
         <UploadQueueBootstrap />
+        <PoseBootstrap />
         <RootNavigator />
         <ToastHost />
       </SafeAreaProvider>
