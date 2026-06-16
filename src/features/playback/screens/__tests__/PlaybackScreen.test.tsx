@@ -83,6 +83,20 @@ jest.mock('@/features/playback/components/VideoPlayer', () => {
   return { VideoPlayer };
 });
 
+// DrawingCanvas pulls react-native-gesture-handler which jest can't
+// load natively. Stub it as a plain View tagged with the enabled flag.
+jest.mock('@/features/drawing/components/DrawingCanvas', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    DrawingCanvas: (props: { enabled: boolean }) =>
+      React.createElement(View, {
+        testID: 'drawing-canvas-stub',
+        'data-enabled': props.enabled,
+      }),
+  };
+});
+
 const { __state: sourceState } = require('@/features/playback/hooks/useVideoSource');
 const { uploadRecording } = require('@/utils/upload') as {
   uploadRecording: jest.Mock;
@@ -198,6 +212,19 @@ describe('PlaybackScreen', () => {
         userId: 'user-1',
       }),
     );
+  });
+
+  it('mounts the DrawingCanvas in disabled state (Phase 2.1 foundation)', () => {
+    const nav = makeNav();
+    const { getByTestId } = wrap(
+      <PlaybackScreen
+        navigation={nav}
+        route={{ key: 'k', name: 'Playback', params: { videoId: 'vid-1' } }}
+      />,
+    );
+    const canvas = getByTestId('drawing-canvas-stub');
+    expect(canvas).toBeTruthy();
+    expect(canvas.props['data-enabled']).toBe(false);
   });
 
   it('does NOT call upload when route has videoId only', () => {

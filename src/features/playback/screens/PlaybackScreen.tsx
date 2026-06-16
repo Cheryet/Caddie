@@ -20,6 +20,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/ui';
+import { DrawingCanvas } from '@/features/drawing/components/DrawingCanvas';
+import { useDrawing } from '@/features/drawing/hooks/useDrawing';
 import { PlaybackChrome } from '@/features/playback/components/PlaybackChrome';
 import { VideoPlayer } from '@/features/playback/components/VideoPlayer';
 import type { VideoPlayerHandle } from '@/features/playback/components/VideoPlayer';
@@ -49,6 +51,10 @@ export function PlaybackScreen({
   const playback = usePlayback({
     onSeek: (timeSec: number) => playerRef.current?.seek(timeSec),
   });
+  // Drawing canvas state. Phase 2.1 mounts the foundation only —
+  // `tool` stays 'none' (canvas disabled, taps pass through to the
+  // player). Phase 2.2 wires the right-edge toolbar to flip tools.
+  const drawing = useDrawing();
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: 'idle' });
 
@@ -132,6 +138,16 @@ export function PlaybackScreen({
           onEnd={playback.onEnd}
         />
       </Pressable>
+
+      {/* Drawing layer sits above the player, below the chrome. When
+          no tool is selected it's transparent to touches so the
+          tap-to-toggle-chrome behavior is preserved. */}
+      <DrawingCanvas
+        enabled={drawing.enabled}
+        onStrokeStart={drawing.onStrokeStart}
+        onStrokeMove={drawing.onStrokeMove}
+        onStrokeEnd={drawing.onStrokeEnd}
+      />
 
       <PlaybackChrome
         visible={playback.chromeVisible}

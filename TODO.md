@@ -516,6 +516,44 @@ with whatever other phase adds the dep first.
 
 ---
 
+## Phase 2.1 — Drawing canvas foundation (what's next)
+
+**Status:** Phase 2.1 ships the §22 acceptance: an absolute-positioned
+SVG layer (`DrawingCanvas`) mounted between the VideoPlayer and the
+PlaybackChrome, gesture capture via react-native-gesture-handler's
+`Gesture.Pan` with `runOnJS` bridging back to JS callbacks. With no
+tool selected (`'none'`) the canvas has `pointerEvents="none"` so
+the player's tap-to-toggle-chrome behavior is preserved.
+
+The foundation deliberately has NO visible UI of its own. Phases 2.2 →
+2.4 fill in the rest:
+
+1. **Phase 2.2 — Line and freehand tools**
+   - Right-edge vertical toolbar (design at Caddie Screens.dc.html
+     lines 201–231 — Select / Line / Plane / Circle / Freehand /
+     Angle, plus a color dot below a divider)
+   - Line tool: tap-drag creates a segment; endpoints draggable
+   - Freehand: continuous path follows finger
+   - `Shape` type defined; in-progress + committed shapes in
+     `useDrawing`
+   - Undo (last shape) — button + shake gesture
+2. **Phase 2.3 — Circle / angle / plane / select**
+   - Circle (drag radius), angle (3-point, degree readout),
+     plane (extends to canvas edges), select+move, delete-selected
+   - 4-color palette (`colors.drawing.{white,gold,red,blue}`)
+3. **Phase 2.4 — Persistence + share**
+   - Normalize shapes to [0,1] coords on save; debounce 1s writing
+     to `videos.drawings` (already a `Json` column)
+   - Load on PlaybackScreen open
+   - `react-native-view-shot` for share button (captures the video
+     frame + drawings overlay)
+
+**Coordinate space note:** Phase 2.1 emits RAW pixel coordinates from
+RNGH gestures (canvas-local). Phase 2.4 will normalize before
+persistence so saved drawings replay on any device width.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:
