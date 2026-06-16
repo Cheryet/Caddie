@@ -162,6 +162,16 @@ jest.mock('react-native-svg', () => {
   };
 });
 
+// react-native-image-picker ships as untranspiled TypeScript in newer
+// versions. jest's default transform doesn't touch node_modules, so
+// the bare `import { Platform }` at the top of its entry trips a
+// SyntaxError. Stub the surface our wrapper uses (launchImageLibrary)
+// so tests can drive the picker without resolving the real module.
+jest.mock('react-native-image-picker', () => ({
+  __esModule: true,
+  launchImageLibrary: jest.fn().mockResolvedValue({ didCancel: true }),
+}));
+
 // @shopify/flash-list ships native iOS/Android views. Under jest we
 // substitute a plain ScrollView-backed component so tests can render
 // items and assert on them. Mirrors the props we use (data, renderItem,

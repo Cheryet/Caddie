@@ -8,6 +8,7 @@
 
 export { Avatar } from './Avatar';
 export { Badge, type BadgeVariant } from './Badge';
+export { BottomSheet } from './BottomSheet';
 export { Button, type ButtonSize, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { Divider } from './Divider';

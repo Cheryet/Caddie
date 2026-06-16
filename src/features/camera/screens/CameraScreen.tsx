@@ -25,7 +25,6 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -52,9 +51,13 @@ import {
   DEFAULT_SWING_HAND,
 } from '@/constants/camera';
 import type { CameraAngle, SwingHand } from '@/constants/camera';
-import { CLUBS, DEFAULT_CLUB } from '@/constants/clubs';
 import type { ClubType } from '@/constants/clubs';
-import { mmkv } from '@/core/mmkv/client';
+import {
+  AngleSegmented,
+  ClubChips,
+  HandSegmented,
+} from '@/components/swing-meta';
+import { loadLastClub, setLastClub } from '@/utils/lastClub';
 import {
   openAppSettings,
   useCameraPermission,
@@ -66,27 +69,11 @@ import {
   CameraFlipIcon,
   CloseIcon,
   GridIcon,
-  HandIcon,
 } from '../components/CameraIcons';
 
 import type { RootStackScreenProps } from '@/navigation/types';
 
 type CaptureMode = 'idle' | 'countdown' | 'recording' | 'stopping';
-
-const LAST_CLUB_KEY = 'camera.lastClub';
-
-/**
- * Read the most recently used club from MMKV, falling back to the
- * canonical default. Validates against the current CLUBS list — a
- * removed club from a previous build resets to default.
- */
-function loadLastClub(): ClubType {
-  const raw = mmkv.getString(LAST_CLUB_KEY);
-  if (raw && (CLUBS as readonly string[]).includes(raw)) {
-    return raw as ClubType;
-  }
-  return DEFAULT_CLUB;
-}
 
 export function CameraScreen({ navigation }: RootStackScreenProps<'Camera'>) {
   const cameraPermission = useCameraPermission();
@@ -122,7 +109,7 @@ export function CameraScreen({ navigation }: RootStackScreenProps<'Camera'>) {
   // Persist club selection. PROJECT_SPEC.md §4 line 62 — "persists last
   // selection".
   useEffect(() => {
-    mmkv.set(LAST_CLUB_KEY, club);
+    setLastClub(club);
   }, [club]);
 
   // Cancel any pending timers if the screen unmounts mid-flow.
@@ -409,130 +396,6 @@ function TopBar({
   );
 }
 
-interface AngleSegmentedProps {
-  value: CameraAngle;
-  onChange: (next: CameraAngle) => void;
-  disabled?: boolean;
-}
-
-function AngleSegmented({ value, onChange, disabled }: AngleSegmentedProps) {
-  return (
-    <View style={styles.pillRow} accessibilityRole="tablist">
-      <PillTab
-        label="Face-on"
-        active={value === 'face-on'}
-        onPress={() => onChange('face-on')}
-        disabled={disabled}
-      />
-      <PillTab
-        label="DTL"
-        active={value === 'dtl'}
-        onPress={() => onChange('dtl')}
-        disabled={disabled}
-      />
-    </View>
-  );
-}
-
-interface HandSegmentedProps {
-  value: SwingHand;
-  onChange: (next: SwingHand) => void;
-  disabled?: boolean;
-}
-
-function HandSegmented({ value, onChange, disabled }: HandSegmentedProps) {
-  return (
-    <View style={styles.handRow} accessibilityRole="tablist">
-      <HandIcon color="rgba(240,237,232,0.7)" />
-      <View style={styles.handTabs}>
-        <PillTab
-          label="Right"
-          active={value === 'right'}
-          onPress={() => onChange('right')}
-          disabled={disabled}
-          height={30}
-        />
-        <PillTab
-          label="Left"
-          active={value === 'left'}
-          onPress={() => onChange('left')}
-          disabled={disabled}
-          height={30}
-        />
-      </View>
-    </View>
-  );
-}
-
-interface PillTabProps {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  disabled?: boolean;
-  /** Optional height override (HandSegmented uses 30; default 32). */
-  height?: number;
-}
-
-function PillTab({
-  label,
-  active,
-  onPress,
-  disabled,
-  height = 32,
-}: PillTabProps) {
-  return (
-    <Pressable
-      onPress={disabled ? undefined : onPress}
-      disabled={disabled}
-      style={[styles.pillTab, { height }]}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active, disabled }}>
-      {active ? <View style={styles.pillTabActiveBg} /> : null}
-      <Text
-        style={[
-          styles.pillTabLabel,
-          active && styles.pillTabLabelActive,
-        ]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-interface ClubChipsProps {
-  value: ClubType;
-  onChange: (next: ClubType) => void;
-}
-
-function ClubChips({ value, onChange }: ClubChipsProps) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chipScroll}>
-      {CLUBS.map(c => {
-        const selected = c === value;
-        return (
-          <Pressable
-            key={c}
-            onPress={() => onChange(c)}
-            style={[styles.chip, selected && styles.chipSelected]}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}>
-            <Text
-              style={[
-                styles.chipLabel,
-                selected && styles.chipLabelSelected,
-              ]}>
-              {c}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
 interface RecordRowProps {
   mode: CaptureMode;
   onRecordPress: () => void;
@@ -659,9 +522,7 @@ const GUIDE_LINE_DIM = 'rgba(240,237,232,0.22)';
 const GUIDE_LINE_DIMMER = 'rgba(240,237,232,0.2)';
 const GUIDE_FEET_BORDER = 'rgba(240,237,232,0.28)';
 const GUIDE_CAPTION_COLOR = 'rgba(240,237,232,0.45)';
-const CHROME_BG = 'rgba(12,12,12,0.6)';
 const CHROME_BORDER = 'rgba(255,255,255,0.1)';
-const PILL_INACTIVE_LABEL = 'rgba(240,237,232,0.7)';
 
 const styles = StyleSheet.create({
   container: {
@@ -738,56 +599,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     gap: spacing[2],
-  },
-  pillRow: {
-    flexDirection: 'row',
-    gap: 3,
-    padding: 3,
-    borderRadius: layout.borderRadius.full,
-    backgroundColor: CHROME_BG,
-    borderWidth: 1,
-    borderColor: CHROME_BORDER,
-  },
-  pillTab: {
-    paddingHorizontal: spacing[4],
-    borderRadius: layout.borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 44,
-  },
-  pillTabActiveBg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: layout.borderRadius.full,
-    backgroundColor: colors.text.primary,
-  },
-  pillTabLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PILL_INACTIVE_LABEL,
-  },
-  pillTabLabelActive: {
-    color: colors.text.inverse,
-  },
-  handRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 38,
-    paddingLeft: 13,
-    paddingRight: 5,
-    paddingVertical: 3,
-    borderRadius: layout.borderRadius.full,
-    backgroundColor: CHROME_BG,
-    borderWidth: 1,
-    borderColor: CHROME_BORDER,
-  },
-  handTabs: {
-    flexDirection: 'row',
-    gap: 3,
   },
   // ───── Guideline overlay ─────
   guideOverlay: {
@@ -876,33 +687,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-  },
-  chipScroll: {
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[5] + 2,
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: spacing[4],
-    height: 34,
-    borderRadius: layout.borderRadius.full,
-    borderWidth: 1,
-    borderColor: CHROME_BORDER,
-    backgroundColor: 'rgba(12,12,12,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipSelected: {
-    backgroundColor: colors.text.primary,
-    borderColor: colors.text.primary,
-  },
-  chipLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PILL_INACTIVE_LABEL,
-  },
-  chipLabelSelected: {
-    color: colors.text.inverse,
   },
   recordRow: {
     flexDirection: 'row',

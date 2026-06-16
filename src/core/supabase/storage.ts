@@ -91,14 +91,19 @@ function thumbnailPath(userId: string, videoId: string): string {
   return `${userId}/${videoId}.jpg`;
 }
 
-// React Native's FormData accepts a `{uri, type, name}` object as the
-// value — this is how we tell supabase-js to read from the device
-// filesystem rather than expecting an in-memory Blob.
-function fileFromUri(uri: string, mime: string, name: string): unknown {
-  const fd = new FormData();
-  // TS doesn't know about RN's expanded FormData value shape.
-  fd.append('file', { uri, type: mime, name } as unknown as Blob);
-  return fd;
+/**
+ * Read a local file (file://, ph://, etc.) into an ArrayBuffer ready
+ * for `supabase.storage.upload`. supabase-js v2 explicitly warns that
+ * Blob / File / FormData uploads "do not work as intended" on React
+ * Native — see
+ * https://supabase.com/docs/reference/javascript/storage-from-upload
+ * "For React Native, ... use ArrayBuffer from base64 file data".
+ * The simplest way to satisfy that on RN is to `fetch()` the local
+ * URI and call `arrayBuffer()` on the response — no extra dependency.
+ */
+async function fileFromUri(uri: string): Promise<ArrayBuffer> {
+  const response = await fetch(uri);
+  return response.arrayBuffer();
 }
 
 // ───── Operations ────────────────────────────────────────────────────────
@@ -125,10 +130,18 @@ export async function uploadVideo(
   localPath: string,
 ): Promise<StorageResult<UploadedFile>> {
   const path = videoPath(userId, videoId);
-  const body = fileFromUri(localPath, 'video/mp4', `${videoId}.mp4`);
+  let body: ArrayBuffer;
+  try {
+    body = await fileFromUri(localPath);
+  } catch (err) {
+    return fail({
+      code: 'unknown',
+      message: err instanceof Error ? err.message : 'Could not read video.',
+    });
+  }
   const { error } = await supabase.storage
     .from('videos')
-    .upload(path, body as never, {
+    .upload(path, body, {
       contentType: 'video/mp4',
       upsert: false,
     });
@@ -148,10 +161,18 @@ export async function uploadThumbnail(
   localPath: string,
 ): Promise<StorageResult<UploadedThumbnail>> {
   const path = thumbnailPath(userId, videoId);
-  const body = fileFromUri(localPath, 'image/jpeg', `${videoId}.jpg`);
+  let body: ArrayBuffer;
+  try {
+    body = await fileFromUri(localPath);
+  } catch (err) {
+    return fail({
+      code: 'unknown',
+      message: err instanceof Error ? err.message : 'Could not read thumbnail.',
+    });
+  }
   const { error } = await supabase.storage
     .from('thumbnails')
-    .upload(path, body as never, {
+    .upload(path, body, {
       contentType: 'image/jpeg',
       upsert: false,
     });

@@ -321,6 +321,70 @@ action that fires both row delete + Storage delete.
 
 ---
 
+## Spec contradiction — `react-native-image-picker` vs. Vision Camera "import capability"
+
+**Status:** `react-native-image-picker@^8` is now installed and powers Phase
+1.6's picker. The spec is internally inconsistent on this point:
+
+- `PROJECT_SPEC.md` §8 line 239 claims Vision Camera does "photo library
+  import" — it does not. No version of `react-native-vision-camera`
+  exposes a PHPicker / library-enumeration API.
+- `PROJECT_SPEC.md` §8 line 267 lists `react-native-image-picker` as
+  "dropped". We've un-dropped it because the spec's stated replacement
+  is fictional.
+- `PROJECT_SPEC.md` §22 Phase 1.6 line 1146 says "Install
+  `@react-native-camera-roll/camera-roll`" for import — camera-roll is
+  for enumerating/saving, not for the PHPicker selection UI. We didn't
+  install it for Phase 1.6 since we already get a URI from
+  `react-native-image-picker`. The two libraries serve different roles;
+  camera-roll's "save exported frames" use case lives in Phase 2.4
+  (drawing export) which can install it then.
+
+**Revisit when:** Next time we do a §8 dependency-table audit, prune the
+"dropped" line and update the import claim to reference
+`react-native-image-picker`. Also reconcile the Phase 1.6 bullet so
+future readers don't try to install the wrong library.
+
+---
+
+## Phase 1.6 — Video import deferrals
+
+**Status:** Phase 1.6 ships the §22 acceptance: PHPicker for selection,
+photo library permission string in Info.plist, same upload pipeline as
+recording, hard reject for videos >60s. Several adjacent affordances
+are deferred:
+
+1. **Thumbnail preview in `ImportConfirmSheet`.** The sheet collects
+   angle/hand/club but doesn't show a still of the picked video. Adding
+   it would require `react-native-compressor`'s `createVideoThumbnail`
+   (already installed) to run synchronously inside the picker callback
+   — easy but mixes concerns. Defer until user testing says the missing
+   preview is confusing.
+
+2. **iOS 14+ Limited Photo Library re-prompt.** If the user picked
+   "Limited" access, our picker still works (PHPicker is scoped) but
+   we don't expose the "Select More Photos" affordance. Most pickers
+   surface this through a row in the picker UI itself.
+
+3. **Multi-select import.** PHPicker supports `selectionLimit: N`. For
+   Phase 1.6 we hardcode `1` to match the "one swing at a time" model.
+   Bulk import is a V1 nice-to-have.
+
+4. **`video_imported` analytics event.** PROJECT_SPEC.md §7 line 216
+   lists this in the canonical event set. Wiring is blocked by Phase
+   0.7 (Sentry + analytics) which is itself deferred.
+
+5. **Maestro E2E flow.** `AI_IMPLEMENTATION_GUIDE.md` §13 line 484
+   names `import-video-appears-in-library.yaml`. No Maestro
+   infrastructure exists yet; the test will land when the rest of the
+   Maestro suite is bootstrapped (typically pre-TestFlight).
+
+**Revisit when:** Either user testing or pre-TestFlight checklist work
+surfaces one of the above. None blocks Phase 1.7 (Playback) or 1.8
+(Video management).
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

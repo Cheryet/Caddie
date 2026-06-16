@@ -9,11 +9,11 @@
  * phase ships small.
  *
  * Tap behaviour:
- *   "+" (header)            → ActionSheetIOS → Camera (record) | Toast
- *                              ("import coming in Phase 1.6")
+ *   "+" (header)            → ActionSheetIOS → Camera (record) | start
+ *                              import-from-photos flow (Phase 1.6)
  *   VideoCard               → navigation.navigate('Playback', {videoId})
  *   Empty-state primary CTA → Camera
- *   Empty-state secondary   → Toast (import still gated)
+ *   Empty-state secondary   → start import-from-photos flow
  *   __DEV__ "Seed test row" → inserts a fake videos row so the grid is
  *                              exercisable on the simulator without
  *                              actual recording. Compiled out in release.
@@ -22,6 +22,7 @@
 import { useCallback, useState } from 'react';
 import {
   ActionSheetIOS,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,8 +35,10 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Button, Toast } from '@/components/ui';
 import { supabase } from '@/core/supabase/client';
+import { ImportConfirmSheet } from '@/features/library/components/ImportConfirmSheet';
 import { VideoCard } from '@/features/library/components/VideoCard';
 import { LibrarySkeletonCard } from '@/features/library/components/LibrarySkeletonCard';
+import { useImportVideo } from '@/features/library/hooks/useImportVideo';
 import { useVideos, type Video } from '@/features/library/hooks/useVideos';
 import type { LibraryStackScreenProps } from '@/navigation/types';
 import { useAppStore } from '@/store/useAppStore';
@@ -48,8 +51,6 @@ const SKELETON_COUNT = 6;
 const COLUMN_GAP = spacing[3]; // 12 — matches design
 const SKELETON_KEYS = Array.from({ length: SKELETON_COUNT }, (_, i) => `sk-${i}`);
 
-const IMPORT_TOAST_MSG = 'Photo library import lands in the next update.';
-
 // ───── Screen ────────────────────────────────────────────────────────────
 
 export function LibraryScreen({
@@ -59,14 +60,17 @@ export function LibraryScreen({
   const userId = useAppStore(s => s.user?.id ?? null);
   const { videos, isLoading, isRefreshing, error, refresh } = useVideos();
   const [isSeeding, setIsSeeding] = useState(false);
+  const importer = useImportVideo({ onUploadComplete: refresh });
 
   const openCamera = useCallback(() => {
     navigation.navigate('Camera');
   }, [navigation]);
 
-  const openImportComingSoon = useCallback(() => {
-    Toast.show({ message: IMPORT_TOAST_MSG, variant: 'info' });
-  }, []);
+  const startImport = useCallback(() => {
+    importer.start().catch(() => {
+      // Errors surface through the toast inside the hook; nothing to do.
+    });
+  }, [importer]);
 
   const onPressAdd = useCallback(() => {
     ActionSheetIOS.showActionSheetWithOptions(
@@ -77,10 +81,10 @@ export function LibraryScreen({
       },
       index => {
         if (index === 0) openCamera();
-        if (index === 1) openImportComingSoon();
+        if (index === 1) startImport();
       },
     );
-  }, [openCamera, openImportComingSoon]);
+  }, [openCamera, startImport]);
 
   const onPressCard = useCallback(
     (video: Video) => {
@@ -164,7 +168,7 @@ export function LibraryScreen({
       ) : showEmpty ? (
         <LibraryEmpty
           onRecord={openCamera}
-          onImport={openImportComingSoon}
+          onImport={startImport}
           bottomInset={insets.bottom}
         />
       ) : (
@@ -195,6 +199,38 @@ export function LibraryScreen({
           )}
         />
       )}
+
+      <ImportConfirmSheet
+        visible={importer.sheet.visible}
+        defaultClub={importer.sheet.defaultClub}
+        isUploading={importer.sheet.isUploading}
+        onConfirm={importer.sheet.onConfirm}
+        onDismiss={importer.sheet.onDismiss}
+      />
+
+      {importer.isProcessing && !importer.sheet.visible ? (
+        <ImportProcessingOverlay />
+      ) : null}
+    </View>
+  );
+}
+
+// ───── Import-in-progress overlay ────────────────────────────────────────
+// Absolute-positioned View (NOT a Modal) so it lives inside the
+// LibraryScreen view tree. PHPicker presents above the entire RN root
+// as a native UIViewController — using a Modal here would race iOS's
+// present-controller call and block the picker from opening. With a
+// plain View, PHPicker simply covers the overlay while it's on screen
+// and uncovers it the moment it dismisses, instantly filling the
+// asset-copy gap.
+
+function ImportProcessingOverlay() {
+  return (
+    <View style={styles.processingRoot} pointerEvents="auto">
+      <View style={styles.processingCard}>
+        <ActivityIndicator color={colors.gold.default} />
+        <Text style={styles.processingLabel}>Preparing video…</Text>
+      </View>
     </View>
   );
 }
@@ -440,5 +476,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.tertiary,
     textAlign: 'center',
+  },
+  // Import processing overlay — absolute fill inside LibraryScreen
+  processingRoot: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,10,10,0.55)',
+  },
+  processingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[4],
+    borderRadius: layout.borderRadius.lg,
+    backgroundColor: colors.bg.overlay,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  processingLabel: {
+    ...typography.body,
+    color: colors.text.primary,
   },
 });

@@ -44,8 +44,17 @@ const { upload, createSignedUrl, remove, getPublicUrl, from } = __mocks as {
   from: jest.Mock;
 };
 
+// supabase-js v2's RN warning means our wrapper now reads local files as
+// ArrayBuffer via `fetch(uri).arrayBuffer()` before handing to upload.
+// Stub global fetch so the test doesn't actually hit anything.
+const fetchMock = jest.fn();
+(globalThis as { fetch: unknown }).fetch = fetchMock;
+
 beforeEach(() => {
   jest.clearAllMocks();
+  fetchMock.mockResolvedValue({
+    arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+  });
   upload.mockResolvedValue({ data: null, error: null });
   createSignedUrl.mockResolvedValue({
     data: { signedUrl: 'https://signed.example/abc' },
