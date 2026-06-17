@@ -79,5 +79,11 @@ yarn-error.log
 .env.*
 !.env.example
 
+# Editor swap / temp files
+*.swp
+*.swo
+*~
+
 # Local Claude Code session state
 .claude/
+.mcp.json
