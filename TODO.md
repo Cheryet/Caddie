@@ -11,6 +11,42 @@ keep a paper trail.
 
 ---
 
+## Physical-device verification — pending Apple Developer account
+
+**Status:** Blocked on Apple Developer account activation. Account purchased
+**2026-06-16**; Apple says confirmation can take up to 48h (expect active by
+**~2026-06-18**).
+
+**Why blocked:** Two things need a real iPhone —
+1. Code signing for on-device builds (the project currently builds only for the
+   simulator, no signing team).
+2. **The Phase 3.2 pose skeleton can only be verified on a physical device.**
+   Apple Vision's `VNDetectHumanBodyPoseRequest` cannot be set up on the iOS
+   Simulator (fails with Vision error code 9, "Unable to setup request") — the
+   body-pose model isn't in the simulator runtime. On the sim the feature now
+   degrades gracefully (capability probe in `initialize()` → pose pill hidden).
+   The pipeline is verified up to the Vision call (engine init, frame
+   extraction); only the on-device model inference is unverified.
+
+**What to do when the account is active:**
+1. **Signing** — in Xcode (`ios/Caddie.xcworkspace`) → Caddie target → Signing &
+   Capabilities → set Team to the new account, enable "Automatically manage
+   signing". Change the bundle id off the RN template default
+   (`org.reactjs.native.example.Caddie`) to a unique reverse-DNS id
+   (e.g. `com.cheryet.caddie`) so provisioning works without collision.
+2. **Run on device** — `npx react-native run-ios --device` (trust the developer
+   cert on the phone the first time).
+3. **Verify the pose skeleton** — open a swing → tap Pose → expect the gold
+   skeleton over the golfer.
+4. **If the skeleton is empty on device** — the Vision joint-name strings in
+   `src/core/pose/landmarks.ts` (`RAW_NAME_TO_JOINT`) were a best-guess and are
+   **unconfirmed** (Vision never ran on the sim). `toPoseFrame` logs
+   `[pose] unmapped joint name: <real name>` in `__DEV__` for anything that
+   doesn't map — watch the Metro console; those lines name the exact raw joints
+   to add to the map. This is the one residual unknown in Phase 3.2.
+
+---
+
 ## Authentication — email confirmation
 
 **Status:** Workaround in place. Email confirmation is **disabled** on the
