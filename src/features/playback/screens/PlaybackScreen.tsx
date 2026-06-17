@@ -30,6 +30,9 @@ import type { VideoPlayerHandle } from '@/features/playback/components/VideoPlay
 import { useVideoSource } from '@/features/playback/hooks/useVideoSource';
 import { usePlayback } from '@/features/playback/hooks/usePlayback';
 import { useShareSwing } from '@/features/playback/hooks/useShareSwing';
+import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
+import { usePoseFrame } from '@/features/pose/hooks/usePoseFrame';
+import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
 import { useAppStore } from '@/store/useAppStore';
 import { uploadRecording } from '@/utils/upload';
 import { formatRelativeDate } from '@/utils/relativeTime';
@@ -83,6 +86,20 @@ export function PlaybackScreen({
     //      to switch tools and exit.
     chromeLocked: drawing.isStroking || drawing.tool === 'angle',
   });
+
+  // Pose overlay (Phase 3.2). Off by default; the pill only shows once
+  // the on-device engine reports ready. Detection runs on the current
+  // frame (debounced) while enabled — see usePoseFrame.
+  const [poseEnabled, setPoseEnabled] = useState(false);
+  const poseStatus = usePoseStatus();
+  const poseFrame = usePoseFrame({
+    uri: source.uri,
+    currentMs: playback.currentMs,
+    enabled: poseEnabled,
+  });
+  const handleTogglePose = useCallback(() => {
+    setPoseEnabled(prev => !prev);
+  }, []);
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: 'idle' });
 
@@ -171,6 +188,11 @@ export function PlaybackScreen({
           />
         </Pressable>
 
+        {/* Pose skeleton sits above the video, below the drawing layer
+            so annotations draw over it. Purely visual (pointerEvents
+            none), so it never steals taps from the player or canvas. */}
+        <PoseOverlay frame={poseFrame.frame} canvasSize={drawing.canvasSize} />
+
         {/* Drawing layer sits above the player, below the chrome. When
             no tool is selected it's transparent to touches so the
             tap-to-toggle-chrome behavior is preserved. */}
@@ -206,6 +228,9 @@ export function PlaybackScreen({
         onSeekMs={playback.seekMs}
         rate={playback.rate}
         onRate={playback.setRate}
+        poseAvailable={poseStatus.status === 'ready'}
+        poseEnabled={poseEnabled}
+        onTogglePose={handleTogglePose}
       >
         <DrawingToolbar
           tool={drawing.tool}

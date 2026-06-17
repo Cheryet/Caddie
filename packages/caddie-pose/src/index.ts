@@ -12,17 +12,21 @@
 
 import { NativeModules } from 'react-native';
 
-import type { PoseLandmark } from './types';
+import type { PoseFrameResult, PoseLandmark } from './types';
 
 interface CaddiePoseNativeModule {
   initialize(): Promise<boolean>;
   detectOnImage(imagePath: string): Promise<PoseLandmark[]>;
+  detectOnVideoFrame(
+    videoPath: string,
+    timeMs: number,
+  ): Promise<PoseFrameResult>;
 }
 
 const native = (NativeModules as { CaddiePose?: CaddiePoseNativeModule })
   .CaddiePose;
 
-export { type PoseLandmark } from './types';
+export { type PoseFrameResult, type PoseLandmark } from './types';
 
 /** Verify the native module is registered + iOS version is supported. */
 export async function initialize(): Promise<void> {
@@ -42,4 +46,21 @@ export async function detectOnImage(
     throw new Error('CaddiePose native module not found');
   }
   return native.detectOnImage(imagePath);
+}
+
+/**
+ * Extract the frame at `timeMs` from the video at `videoPath` (a local
+ * `file://` path or a remote URL) and run pose detection on it. Used by
+ * the playback overlay to detect the body on the frame the user is
+ * scrubbing to. Returns the upright frame dimensions alongside the
+ * landmarks.
+ */
+export async function detectOnVideoFrame(
+  videoPath: string,
+  timeMs: number,
+): Promise<PoseFrameResult> {
+  if (!native) {
+    throw new Error('CaddiePose native module not found');
+  }
+  return native.detectOnVideoFrame(videoPath, timeMs);
 }

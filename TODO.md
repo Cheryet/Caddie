@@ -395,8 +395,8 @@ owning phases land.
 
 1. **Drawing toolbar** (right edge of `PlaybackScreen` in the design).
    Phase 2.1 — Drawing canvas foundation.
-2. **Pose toggle pill** (top-left, below the top bar). Phase 3.2 —
-   Pose overlay.
+2. ~~**Pose toggle pill** (top-left, below the top bar).~~ DONE in
+   Phase 3.2 — Pose overlay.
 3. **"Analyse with AI" gold CTA** (centered above transport). Phase
    4.3 — Analysis screen UI; gated by Pro per §11.
 4. **Impact frame marker** on the scrub track (the small amber tick
@@ -749,13 +749,36 @@ of MediaPipe iOS SDK because:
      `src/core/pose/landmarks.ts` to map to a stable schema
      (`leftShoulder`, etc.) before consumers see them.
 
-**Phase 3.2 picks up from here:**
-   - The abstraction's `detectPose(imagePath)` is wired and ready.
-   - Build the `PoseOverlay` SVG component that subscribes to
-     `usePoseStatus`, calls `detectPose` on the current frame,
-     renders the skeleton.
-   - Add the landmark-name map for stable schema.
-   - Toggle on/off in the playback chrome.
+**Phase 3.2 — Pose overlay on playback — DONE.**
+   - `PoseOverlay` (`src/features/pose/components/`) — React.memo SVG,
+     `pointerEvents="none"`, draws bones + joints scaled into the
+     `resizeMode="contain"` letterbox, key joints (wrists/hips/
+     shoulders) highlighted, single translucent head circle, returns
+     null when there's nothing to draw.
+   - `usePoseFrame` (`src/features/pose/hooks/`) — debounced (settle-
+     based), single-flight, latest-wins detection gated on
+     enabled && ready && uri.
+   - `src/core/pose/landmarks.ts` — raw Vision rig names → stable
+     `PoseJoint` schema (+ defensive simple-name aliases), bone list,
+     key/face joint sets, `toPoseFrame()` (confidence-filtered).
+   - Toggle pill in `PlaybackChrome` (top-left, gold-when-active per
+     DESIGN_SYSTEM §14); only shows once the engine reports `ready`.
+
+   **Frame extraction decision (the crux):** view-shot can't capture
+   `react-native-video`'s AVPlayerLayer on iOS (comes back black), so
+   the `caddie-pose` bridge gained `detectOnVideoFrame(uri, timeMs)` —
+   `AVAssetImageGenerator` grabs the exact upright frame, then runs the
+   same Vision request. Engine work stays in the bridge (§16 Risk 4);
+   the `src/core/pose` abstraction surface is unchanged. It returns the
+   upright frame's width/height so the overlay projects landmarks
+   without guessing display orientation. Podspec gained AVFoundation +
+   CoreMedia. This same native method sets up Phase 4.2 frame
+   extraction.
+
+   **Verify on device/sim:** Apple Vision raw joint-name strings are
+   mapped defensively (rig names + simple aliases); `toPoseFrame` emits
+   a `__DEV__` warn for any unmapped name — watch the sim console on
+   first real detection to confirm the rig names match.
 
 ---
 

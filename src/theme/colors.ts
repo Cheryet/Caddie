@@ -61,6 +61,15 @@ export const colors = {
     blue: '#4A9EDB',
   },
 
+  // Pose skeleton overlay (DESIGN_SYSTEM §14) — gold at varying alpha
+  pose: {
+    bone: 'rgba(201, 168, 76, 0.6)', // 2px skeleton lines
+    joint: 'rgba(201, 168, 76, 0.9)', // standard joint dots
+    jointKey: '#C9A84C', // key joints (wrists, hips, shoulders) = gold.default
+    headFill: 'rgba(201, 168, 76, 0.25)', // translucent head circle fill
+    headStroke: 'rgba(201, 168, 76, 0.6)', // head circle outline
+  },
+
   // Always available regardless of theme
   always: {
     black: '#000000',

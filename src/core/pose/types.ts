@@ -14,7 +14,7 @@
 
 export type PoseStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
-export type { PoseLandmark } from 'caddie-pose';
+export type { PoseFrameResult, PoseLandmark } from 'caddie-pose';
 
 export interface PoseInitError {
   code: 'package_unavailable' | 'model_load_failed' | 'unknown';

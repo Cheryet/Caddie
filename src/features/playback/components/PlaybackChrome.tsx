@@ -22,7 +22,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Path, Polyline, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Polyline, Rect } from 'react-native-svg';
 
 import { colors, layout, spacing, typography } from '@/theme';
 import { PLAYBACK_RATES, type PlaybackRate } from '@/features/playback/hooks/usePlayback';
@@ -46,6 +46,11 @@ interface PlaybackChromeProps {
   // Speed
   rate: PlaybackRate;
   onRate: (rate: PlaybackRate) => void;
+  // Pose overlay toggle (Phase 3.2). The pill only renders when the
+  // engine is available; toggling is owned by the screen.
+  poseAvailable?: boolean;
+  poseEnabled?: boolean;
+  onTogglePose?: () => void;
   /** Optional overlay rendered inside the chrome's fade region. Used
    *  by Phase 2.2's DrawingToolbar so it auto-hides with the chrome. */
   children?: ReactNode;
@@ -68,6 +73,9 @@ export function PlaybackChrome({
   onSeekMs,
   rate,
   onRate,
+  poseAvailable = false,
+  poseEnabled = false,
+  onTogglePose,
   children,
 }: PlaybackChromeProps) {
   const insets = useSafeAreaInsets();
@@ -153,6 +161,48 @@ export function PlaybackChrome({
           </Svg>
         </Pressable>
       </View>
+
+      {/* Pose toggle pill — only when the engine is available (Phase 3.2) */}
+      {poseAvailable ? (
+        <Pressable
+          onPress={onTogglePose}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle pose overlay"
+          accessibilityState={{ selected: poseEnabled }}
+          hitSlop={8}
+          style={[styles.posePill, { top: insets.top + POSE_PILL_TOP }]}
+        >
+          <Svg
+            width={16}
+            height={16}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={poseEnabled ? colors.gold.default : POSE_PILL_INACTIVE}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <Circle
+              cx={13}
+              cy={4}
+              r={2}
+              fill={poseEnabled ? colors.gold.default : POSE_PILL_INACTIVE}
+              stroke="none"
+            />
+            <Path d="M13 8l-2 5 3 2 1 6" />
+            <Path d="M11 13l-4 2" />
+            <Path d="M9 22l2-7" />
+          </Svg>
+          <Text
+            style={[
+              styles.posePillLabel,
+              { color: poseEnabled ? colors.gold.default : POSE_PILL_INACTIVE },
+            ]}
+          >
+            Pose
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* Bottom scrim + controls */}
       <View
@@ -277,6 +327,13 @@ const TOP_SCRIM_HEIGHT = 150;
 const CHROME_BG = 'rgba(20,20,20,0.55)';
 const CHROME_BORDER = 'rgba(255,255,255,0.1)';
 const MONO_TIME_FONT_SIZE = 11;
+// Pose pill — sits just below the top bar (38px button + gap), matching
+// the design's top:112 / top-bar:62 spacing. Inactive uses a dim white
+// (active is gold.default, per DESIGN_SYSTEM §14).
+const POSE_PILL_TOP = spacing[2] + 38 + spacing[3];
+const POSE_PILL_BG = 'rgba(12,12,12,0.55)';
+const POSE_PILL_BORDER = 'rgba(255,255,255,0.12)';
+const POSE_PILL_INACTIVE = 'rgba(240,237,232,0.78)';
 
 const styles = StyleSheet.create({
   topScrim: {
@@ -314,6 +371,24 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     // No additional style — opacity could indicate disabled in future.
+  },
+  posePill: {
+    position: 'absolute',
+    left: layout.screenPaddingH,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    height: 34,
+    paddingHorizontal: spacing[3] + 1,
+    borderRadius: layout.borderRadius.full,
+    backgroundColor: POSE_PILL_BG,
+    borderWidth: 1,
+    borderColor: POSE_PILL_BORDER,
+  },
+  posePillLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   titleGroup: {
     flex: 1,

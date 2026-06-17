@@ -34,19 +34,28 @@
  *                            touching this file.
  */
 
-import type { PoseInitError, PoseLandmark, PoseStatus } from './types';
+import type {
+  PoseFrameResult,
+  PoseInitError,
+  PoseLandmark,
+  PoseStatus,
+} from './types';
 
 type Listener = (status: PoseStatus, error: PoseInitError | null) => void;
 
 /**
- * The shape the loader returns. `caddie-pose` exports both
- * `initialize` and `detectOnImage`; tests inject a mock that
- * implements both. Keeping them on a single object so init can
- * cache the detect reference for later use.
+ * The shape the loader returns. `caddie-pose` exports `initialize`,
+ * `detectOnImage`, and `detectOnVideoFrame`; tests inject a mock that
+ * implements them. Keeping them on a single object so init can cache
+ * the detect references for later use.
  */
 export interface PoseModule {
   initialize(): Promise<void>;
   detectOnImage(imagePath: string): Promise<PoseLandmark[]>;
+  detectOnVideoFrame(
+    videoPath: string,
+    timeMs: number,
+  ): Promise<PoseFrameResult>;
 }
 
 // Module-level state — single source of truth for the pose status.
@@ -147,6 +156,26 @@ export async function detectPose(imagePath: string): Promise<PoseLandmark[]> {
     throw new Error('Pose engine not ready — check isPoseReady() first');
   }
   return activeModule.detectOnImage(imagePath);
+}
+
+/**
+ * Detect the body pose on the frame at `timeMs` of the video at
+ * `videoUri` (a local `file://` path or a remote URL). Phase 3.2's
+ * overlay calls this per-frame as the user scrubs. Returns the upright
+ * frame dimensions alongside the raw landmarks — `landmarks.ts`'s
+ * `toPoseFrame` maps them to the stable schema.
+ *
+ * Throws when the engine isn't ready. Callers should gate on
+ * `isPoseReady()` or `usePoseStatus()` before invoking.
+ */
+export async function detectPoseFrame(
+  videoUri: string,
+  timeMs: number,
+): Promise<PoseFrameResult> {
+  if (!activeModule) {
+    throw new Error('Pose engine not ready — check isPoseReady() first');
+  }
+  return activeModule.detectOnVideoFrame(videoUri, timeMs);
 }
 
 /**

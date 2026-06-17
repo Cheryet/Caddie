@@ -26,6 +26,8 @@ describe('usePoseStatus', () => {
       await initPose(() => ({
         initialize: () => Promise.resolve(),
         detectOnImage: () => Promise.resolve([]),
+        detectOnVideoFrame: () =>
+          Promise.resolve({ width: 0, height: 0, landmarks: [] }),
       }));
     });
     expect(result.current.status).toBe('ready');

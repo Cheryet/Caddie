@@ -119,4 +119,34 @@ describe('PlaybackChrome', () => {
     expect(onBack).toHaveBeenCalled();
     expect(onShare).toHaveBeenCalled();
   });
+
+  it('hides the pose pill until the engine is available', () => {
+    const { queryByLabelText } = wrap(<PlaybackChrome {...baseProps} />);
+    expect(queryByLabelText('Toggle pose overlay')).toBeNull();
+  });
+
+  it('shows the pose pill and dispatches onTogglePose when available', () => {
+    const onTogglePose = jest.fn();
+    const { getByLabelText } = wrap(
+      <PlaybackChrome
+        {...baseProps}
+        poseAvailable
+        poseEnabled={false}
+        onTogglePose={onTogglePose}
+      />,
+    );
+    const pill = getByLabelText('Toggle pose overlay');
+    expect(pill.props.accessibilityState.selected).toBe(false);
+    fireEvent.press(pill);
+    expect(onTogglePose).toHaveBeenCalled();
+  });
+
+  it('marks the pose pill selected when enabled', () => {
+    const { getByLabelText } = wrap(
+      <PlaybackChrome {...baseProps} poseAvailable poseEnabled onTogglePose={jest.fn()} />,
+    );
+    expect(
+      getByLabelText('Toggle pose overlay').props.accessibilityState.selected,
+    ).toBe(true);
+  });
 });

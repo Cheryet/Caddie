@@ -19,3 +19,20 @@ export interface PoseLandmark {
   /** Detection confidence [0,1]; landmarks below ~0.5 are noisy. */
   visibility: number;
 }
+
+/**
+ * Result of `detectOnVideoFrame`. Carries the upright source-frame
+ * pixel dimensions alongside the landmarks so the overlay can project
+ * the normalised coords into the `resizeMode="contain"` letterbox
+ * without guessing the video's display orientation — the bridge
+ * already applied the preferred track transform, so `width`/`height`
+ * describe exactly the image Vision analysed.
+ */
+export interface PoseFrameResult {
+  /** Upright source-frame width in pixels. */
+  width: number;
+  /** Upright source-frame height in pixels. */
+  height: number;
+  /** Detected landmarks, normalised to the upright frame. */
+  landmarks: PoseLandmark[];
+}

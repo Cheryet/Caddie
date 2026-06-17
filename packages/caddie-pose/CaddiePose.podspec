@@ -13,6 +13,6 @@ Pod::Spec.new do |s|
   s.source       = { :git => "" }
   s.platforms    = { :ios => "14.0" }
   s.source_files = "ios/**/*.{m,mm,h}"
-  s.frameworks   = "Vision", "CoreImage", "UIKit", "Foundation"
+  s.frameworks   = "Vision", "CoreImage", "AVFoundation", "CoreMedia", "UIKit", "Foundation"
   s.dependency "React-Core"
 end
