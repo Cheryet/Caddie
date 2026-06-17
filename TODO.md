@@ -85,8 +85,16 @@ smoothly during playback at any speed.
 
 ## Authentication — email confirmation
 
-**Status:** Workaround in place. Email confirmation is **disabled** on the
-Supabase project (Authentication → Providers → Email → "Confirm email" off).
+**Status:** ⚠️ **Stale — needs reconciliation.** Live signup on
+**2026-06-17** (during Phase 4.1 verification) returned `confirmation_sent_at`
+with no session — i.e. email confirmation is currently **ENABLED** on the
+project, contradicting the "disabled" claim below. Either it was re-enabled
+or never actually turned off. Check Authentication → Providers → Email →
+"Confirm email" in the dashboard; the dead-end-link problem described below
+still applies to mobile signups while it's on.
+
+(Original intent:) Email confirmation was to be **disabled** on the Supabase
+project (Authentication → Providers → Email → "Confirm email" off).
 
 **Why deferred:** Supabase free tier's default "Confirm signup" email template
 only contains a confirmation link, not the 6-digit `{{ .Token }}`. Our app
@@ -896,27 +904,31 @@ and de-risks Phase 4.
 
 ---
 
-## Phase 4.1 — analyze-swing Edge Function: deploy + live verify pending
+## Phase 4.1 — analyze-swing Edge Function: deployed; Claude 200 e2e in 4.4
 
-**Status:** The `analyze-swing` Edge Function is authored and **locally
-verified** (`deno test` 19 ✅, `deno lint`/`deno check` ✅ — the typecheck
-pulls the real `@anthropic-ai/sdk` + `supabase-js` types) but **not yet
-deployed**. Deploy needs project-owner actions that can't be scripted here.
+**Status:** DEPLOYED 2026-06-17 to project `kjhoqbxuylczuemgjgpc`
+(`analyze-swing` v1, ACTIVE, `verify_jwt` on, import map applied).
+`ANTHROPIC_API_KEY` secret set on the project. Locally verified
+(`deno test` 19 ✅, `deno lint`/`deno check` ✅) + live-verified at the
+auth boundary.
 
-**Pending prerequisites (user-owned):**
-1. Anthropic API key from console.anthropic.com.
-2. `supabase secrets set ANTHROPIC_API_KEY=…` — the key lives ONLY as a
-   Supabase secret, never in `.env` or the bundle (PROJECT_SPEC §14).
-3. `supabase login` + `supabase link --project-ref <ref>`.
-4. `supabase functions deploy analyze-swing` — outward-facing on the live
-   project, so confirm before running.
+**Live-verified (auth boundary):**
+- No Authorization header → `401` with the *platform's* body (gateway
+  rejected before the function ran).
+- Anon-key Bearer → passes the platform gate and reaches the handler,
+  whose `getUser()` rejects the session-less token with the function's
+  OWN `401` body (`{"error":{"code":"unauthorized",…}}`) — proving the
+  deployed code executes its auth logic.
 
-**Live verification once deployed (surface = the HTTP endpoint):**
-- No/invalid JWT → `401` (free; short-circuits before Claude).
-- Valid JWT + 8-frame payload → `200` with a stored `analyses` row +
-  token counts (spends ~$0.01 Claude). Confirm `videos.has_analysis`
-  flips true and `profiles.analyses_run` increments.
-- 11th authorized call in a UTC day → `429`.
+**Still to verify end-to-end (Phase 4.4):** the authenticated happy path —
+request validation → daily limit → Claude `200` → `analyses` row + token
+counts + `has_analysis`/`analyses_run`. Not forced here: a real `200`
+needs real swing frames (synthetic frames flakily trip the schema's
+`positives` min-1), and email confirmation is currently ON (see the
+"email confirmation" entry) so a throwaway user token couldn't be minted.
+This path is unit-tested (19 deno tests) + typechecked against the real
+SDK, and verifies naturally in 4.4 with a real signed-in user + a real
+uploaded video + real extracted frames.
 
 **In-4.1 scoping (deliberate, spec-faithful):**
 - The 4.1 cost guard is the **daily limit**. The **cache-skip** guard
