@@ -28,7 +28,12 @@ const native = (NativeModules as { CaddiePose?: CaddiePoseNativeModule })
 
 export { type PoseFrameResult, type PoseLandmark } from './types';
 
-/** Verify the native module is registered + iOS version is supported. */
+/**
+ * Verify the native module is registered, the OS supports Vision, AND
+ * body-pose detection can actually run here (a capability probe — it
+ * can't be set up on the iOS Simulator). Rejects when pose is
+ * unavailable so callers can disable the feature.
+ */
 export async function initialize(): Promise<void> {
   if (!native) {
     throw new Error(

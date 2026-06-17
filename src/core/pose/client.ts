@@ -24,8 +24,11 @@
  * package implementation changes — the abstraction here stays.
  *
  * Phase 3.1 scope:
- *   - `initPose()`         — verify the native bridge is registered
- *                            and the OS supports Vision (iOS 14+).
+ *   - `initPose()`         — verify the native bridge is registered,
+ *                            the OS supports Vision (iOS 14+), and
+ *                            body-pose detection can actually run (a
+ *                            capability probe — it fails on the iOS
+ *                            Simulator, so the UI hides pose there).
  *   - `subscribePoseStatus` — pub/sub for the loading → ready/failed
  *                            transition. Mirrors the Toast singleton.
  *   - `detectPose(path)`   — proxied to caddie-pose. Phase 3.2's
