@@ -113,11 +113,38 @@ describe('pose/landmarks · toPoseFrame', () => {
   it('returns an empty joint map when nothing maps', () => {
     expect(toPoseFrame([], 1).joints).toEqual({});
   });
+
+  it('synthesises a head from the centroid of detected face landmarks', () => {
+    const frame = toPoseFrame(
+      [lm('nose_1_joint', 0.5, 0.1), lm('left_ear_1_joint', 0.4, 0.12)],
+      1,
+    );
+    expect(frame.joints.head).toBeDefined();
+    expect(frame.joints.head!.x).toBeCloseTo(0.45);
+    expect(frame.joints.head!.y).toBeCloseTo(0.11);
+  });
+
+  it('falls back to a spine-extrapolated head when no face landmarks', () => {
+    // head = neck + (neck - root) * 0.4; y: 0.4 + (0.4 - 0.6) * 0.4 = 0.32
+    const frame = toPoseFrame(
+      [lm('neck_1_joint', 0.5, 0.4), lm('root', 0.5, 0.6)],
+      1,
+    );
+    expect(frame.joints.head).toBeDefined();
+    expect(frame.joints.head!.x).toBeCloseTo(0.5);
+    expect(frame.joints.head!.y).toBeCloseTo(0.32);
+  });
+
+  it('has no head when neither face nor neck+root are present', () => {
+    const frame = toPoseFrame([lm('left_hand_1_joint')], 1);
+    expect(frame.joints.head).toBeUndefined();
+  });
 });
 
 describe('pose/landmarks · skeleton metadata', () => {
   // The set of joints that toPoseFrame can ever produce.
   const validJoints = new Set<PoseJoint>([
+    'head',
     'nose',
     'leftEye',
     'rightEye',

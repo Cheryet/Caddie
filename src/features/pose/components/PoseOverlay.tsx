@@ -65,7 +65,7 @@ function PoseOverlayImpl({ frame, canvasSize }: PoseOverlayProps) {
     points[joint] = projectPoint(point.x, point.y, rect);
   }
 
-  const head = points.nose;
+  const head = points.head;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -89,10 +89,10 @@ function PoseOverlayImpl({ frame, canvasSize }: PoseOverlayProps) {
           );
         })}
 
-        {/* Joints — face landmarks are drawn as the head circle below,
-            not individual dots. */}
+        {/* Joints — face landmarks + the synthetic head are drawn as the
+            head circle below, not individual dots. */}
         {presentJoints.map(joint => {
-          if (FACE_JOINTS.has(joint)) return null;
+          if (FACE_JOINTS.has(joint) || joint === 'head') return null;
           const point = points[joint];
           if (!point) return null;
           const isKey = KEY_JOINTS.has(joint);
@@ -107,7 +107,7 @@ function PoseOverlayImpl({ frame, canvasSize }: PoseOverlayProps) {
           );
         })}
 
-        {/* Head — single translucent circle anchored on the nose. */}
+        {/* Head — single translucent circle at the synthetic head point. */}
         {head ? (
           <Circle
             cx={head.x}

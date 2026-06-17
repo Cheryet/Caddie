@@ -20,8 +20,10 @@
 
 import type { PoseLandmark } from './types';
 
-/** The stable, engine-agnostic joint names the rest of the app uses. */
+/** The stable, engine-agnostic joint names the rest of the app uses.
+ *  `head` is synthesised (see computeHead) — Vision doesn't emit it. */
 export type PoseJoint =
+  | 'head'
   | 'nose'
   | 'leftEye'
   | 'rightEye'
@@ -115,7 +117,7 @@ export function normalizeJointName(raw: string): PoseJoint | null {
  * bone only renders when both endpoints are present in the frame.
  */
 export const SKELETON_BONES: readonly (readonly [PoseJoint, PoseJoint])[] = [
-  ['neck', 'nose'],
+  ['neck', 'head'],
   ['leftShoulder', 'rightShoulder'],
   ['neck', 'leftShoulder'],
   ['neck', 'rightShoulder'],
@@ -183,9 +185,52 @@ export interface PoseFrame {
 }
 
 /**
+ * Synthesise a stable `head` point so the skeleton always has a head to
+ * draw. Vision's individual face joints (nose/eyes/ears) are frequently
+ * occluded in a golf posture (head down, cap on), so we don't rely on
+ * any single one: take the centroid of whatever face landmarks were
+ * detected, and if none, project up the spine from the neck. Returns
+ * undefined only when there's no neck/root to anchor to either.
+ */
+function computeHead(
+  joints: Partial<Record<PoseJoint, PoseJointPoint>>,
+): PoseJointPoint | undefined {
+  const faces: PoseJointPoint[] = [];
+  for (const face of FACE_JOINTS) {
+    const point = joints[face];
+    if (point) faces.push(point);
+  }
+
+  if (faces.length > 0) {
+    return {
+      joint: 'head',
+      x: faces.reduce((sum, p) => sum + p.x, 0) / faces.length,
+      y: faces.reduce((sum, p) => sum + p.y, 0) / faces.length,
+      confidence: Math.max(...faces.map(p => p.confidence)),
+    };
+  }
+
+  // No face landmarks — extrapolate up the spine (root → neck → head).
+  const neck = joints.neck;
+  const root = joints.root;
+  if (neck && root) {
+    const k = 0.4; // head sits ~40% of the torso length above the neck
+    return {
+      joint: 'head',
+      x: neck.x + (neck.x - root.x) * k,
+      y: neck.y + (neck.y - root.y) * k,
+      confidence: neck.confidence,
+    };
+  }
+
+  return undefined;
+}
+
+/**
  * Map raw engine landmarks into a stable `PoseFrame`. Unknown joint
- * names and points below `MIN_JOINT_CONFIDENCE` are dropped. `aspect`
- * is the upright source-frame width/height the engine reported.
+ * names and points below `MIN_JOINT_CONFIDENCE` are dropped, then a
+ * synthetic `head` point is added. `aspect` is the upright source-frame
+ * width/height the engine reported.
  */
 export function toPoseFrame(
   raw: PoseLandmark[],
@@ -210,6 +255,9 @@ export function toPoseFrame(
       confidence: landmark.visibility,
     };
   }
+
+  const head = computeHead(joints);
+  if (head) joints.head = head;
 
   return {
     joints,

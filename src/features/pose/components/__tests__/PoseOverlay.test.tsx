@@ -15,14 +15,14 @@ import { colors } from '@/theme';
 
 const CANVAS = { width: 100, height: 100 };
 
-// leftShoulder + rightShoulder (key), leftElbow (plain), nose (face).
+// leftShoulder + rightShoulder (key), leftElbow (plain), head (circle).
 const frame: PoseFrame = {
   aspect: 1,
   joints: {
     leftShoulder: { joint: 'leftShoulder', x: 0.4, y: 0.3, confidence: 0.9 },
     rightShoulder: { joint: 'rightShoulder', x: 0.6, y: 0.3, confidence: 0.9 },
     leftElbow: { joint: 'leftElbow', x: 0.35, y: 0.5, confidence: 0.8 },
-    nose: { joint: 'nose', x: 0.5, y: 0.1, confidence: 0.7 },
+    head: { joint: 'head', x: 0.5, y: 0.1, confidence: 0.7 },
   },
 };
 
@@ -80,11 +80,11 @@ describe('PoseOverlay', () => {
     expect(head[0]?.props.stroke).toBe(colors.pose.headStroke);
   });
 
-  it('does not draw the nose as a plain joint dot', () => {
+  it('does not draw the head point as a plain joint dot', () => {
     const { queryAllByTestId } = render(
       <PoseOverlay frame={frame} canvasSize={CANVAS} />,
     );
-    // 4 circles total = 3 joints (no nose dot) + 1 head circle.
+    // 4 circles total = 3 joint dots (head skipped) + 1 head circle.
     expect(queryAllByTestId('svg-Circle')).toHaveLength(4);
   });
 });
