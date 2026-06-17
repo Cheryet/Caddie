@@ -896,6 +896,46 @@ and de-risks Phase 4.
 
 ---
 
+## Phase 4.1 — analyze-swing Edge Function: deploy + live verify pending
+
+**Status:** The `analyze-swing` Edge Function is authored and **locally
+verified** (`deno test` 19 ✅, `deno lint`/`deno check` ✅ — the typecheck
+pulls the real `@anthropic-ai/sdk` + `supabase-js` types) but **not yet
+deployed**. Deploy needs project-owner actions that can't be scripted here.
+
+**Pending prerequisites (user-owned):**
+1. Anthropic API key from console.anthropic.com.
+2. `supabase secrets set ANTHROPIC_API_KEY=…` — the key lives ONLY as a
+   Supabase secret, never in `.env` or the bundle (PROJECT_SPEC §14).
+3. `supabase login` + `supabase link --project-ref <ref>`.
+4. `supabase functions deploy analyze-swing` — outward-facing on the live
+   project, so confirm before running.
+
+**Live verification once deployed (surface = the HTTP endpoint):**
+- No/invalid JWT → `401` (free; short-circuits before Claude).
+- Valid JWT + 8-frame payload → `200` with a stored `analyses` row +
+  token counts (spends ~$0.01 Claude). Confirm `videos.has_analysis`
+  flips true and `profiles.analyses_run` increments.
+- 11th authorized call in a UTC day → `429`.
+
+**In-4.1 scoping (deliberate, spec-faithful):**
+- The 4.1 cost guard is the **daily limit**. The **cache-skip** guard
+  ("cache hit skips API call") + a `refresh` param + the `useAnalysis`
+  hook + one-in-flight blocking are **Phase 4.4** per §22. The function
+  analyzes + inserts on every authorized call for now.
+- Real 8-frame extraction is **Phase 4.2** (`frameExtractor.ts`); 4.1
+  accepts whatever `frames[8]` it's handed.
+- Prompt + Claude-output schema live server-side (Option A). The app-side
+  `src/core/claude/` mirror (PROMPT_VERSION + API-envelope schema for the
+  app to validate the function's response) lands in **Phase 4.4**.
+
+**Toolchain:** Edge Functions are Deno (`deno` installed via brew). Run
+`deno test|lint|check --config supabase/functions/analyze-swing/deno.json
+supabase/functions/analyze-swing/`. The app's tsconfig/eslint/jest now
+exclude `supabase/`.
+
+---
+
 ## Future feature — Video trim / clip-to-swing
 
 **Status:** Not scoped to any current phase. Captured as a user

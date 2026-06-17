@@ -6,9 +6,13 @@ module.exports = {
     'ios/',
     'coverage/',
     'Design/',
+    // Supabase Edge Functions are Deno (npm:/jsr: specifiers, .ts imports,
+    // Deno globals) — linted by `deno lint`, not the RN ESLint config.
+    'supabase/',
     'babel.config.js',
     'metro.config.js',
     'jest.config.js',
+    'jest.setup.js',
   ],
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',
