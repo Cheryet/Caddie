@@ -30,6 +30,8 @@ export type {
 } from './landmarks';
 export { buildPoseTrack, poseAt } from './track';
 export type { PoseTrack, PoseTrackSample } from './track';
+export { computePoseMetrics } from './metrics';
+export type { PoseMetrics, PoseMetricsOptions } from './metrics';
 export type {
   PoseFrameResult,
   PoseInitError,

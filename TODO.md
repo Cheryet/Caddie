@@ -854,6 +854,48 @@ of MediaPipe iOS SDK because:
 
 ---
 
+## Phase 3.3 — metric overlay display deferred (compute layer shipped)
+
+**Status:** Phase 3.3's compute half ships — `src/core/pose/metrics.ts`
+(`computePoseMetrics`) derives the four §3.3 metrics (shoulder rotation,
+hip–shoulder separation, spine tilt, head delta) from a `PoseFrame`, pure
+and unit-tested, exported from `@/core/pose`. The **"small collapsible
+metric overlay when pose active"** bullet is **intentionally not built.**
+
+**Why deferred (product decision, 2026-06-17):** A single phone camera
+can't recover true axial rotation, so these are 2D image-plane proxies —
+approximate by nature. Surfacing approximate numbers as precise on-screen
+readouts would mislead, and an always-on HUD clutters the premium
+playback surface for limited payoff. The user explicitly chose to skip
+the display for now.
+
+**Why the compute layer still ships:** §3.3 says these metrics "feed into
+Phase 4 frame classification," and TODO's Phase 1.7 item #4 (impact-frame
+scrub marker) reads the impact timestamp from here. That consumer uses
+the metrics as *relative* signals over the pre-computed track (peak
+shoulder turn = top of backswing, separation crossing ≈ impact), where
+curve shape matters, not absolute accuracy — so approximate is fine and
+the headless module earns its place. Building it now keeps phase order
+and de-risks Phase 4.
+
+**What to do at revisit (if the overlay is ever wanted):**
+1. `usePoseMetrics(track, currentMs, swingHand)` hook — derive the
+   address baseline from `track[0]` head, round + memoize so the view
+   only re-renders when displayed values change.
+2. `PoseMetricsOverlay` — `React.memo`, collapsible, `—` for null
+   metrics, `pointerEvents="box-none"` wrap so it never steals the
+   tap-to-toggle-chrome behaviour. No design reference exists (DESIGN_
+   SYSTEM §14 covers only the skeleton), so a layout pass is needed —
+   the "top-left stat card vs. bottom strip vs. left-edge pills" options
+   were drafted but not chosen.
+3. Mount in `PlaybackScreen` only when `poseEnabled && poseTrack.status
+   === 'ready'`; resolve `swingHand` from `source.meta.swingHand`
+   (library) or `params.swingHand` (recording).
+4. Add tokenised HUD surface/border to `colors.pose` rather than the
+   inline `rgba(...)` the analyze-card currently uses.
+
+---
+
 ## Future feature — Video trim / clip-to-swing
 
 **Status:** Not scoped to any current phase. Captured as a user
