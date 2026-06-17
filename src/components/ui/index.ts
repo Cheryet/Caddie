@@ -7,7 +7,12 @@
  */
 
 export { Avatar } from './Avatar';
-export { Badge, type BadgeVariant } from './Badge';
+export {
+  Badge,
+  BADGE_PALETTE,
+  type BadgeVariant,
+  type BadgePalette,
+} from './Badge';
 export { BottomSheet } from './BottomSheet';
 export { Button, type ButtonSize, type ButtonVariant } from './Button';
 export { Card } from './Card';

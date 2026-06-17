@@ -83,6 +83,11 @@ jest.mock('react-native-reanimated', () => {
     },
     runOnJS: fn => fn,
     useAnimatedStyle: () => ({}),
+    // SwingScore animates an SVG circle's strokeDashoffset via animated
+    // props. The stub returns an empty object — the ring renders at its
+    // static stroke-dash attrs, which is all the component tests assert on.
+    useAnimatedProps: () => ({}),
+    useReducedMotion: () => false,
     useSharedValue: init => ({ value: init }),
     withDelay: (_delay, animation) => animation,
     withRepeat: animation => animation,

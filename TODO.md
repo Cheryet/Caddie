@@ -1107,6 +1107,79 @@ a big quality win.
 
 ---
 
+## Phase 4.3 — Analysis screen UI: shipped (mock data; wiring in 4.4)
+
+**Status:** ✅ Components + screen built and unit-tested, rendering all three
+states (loading / error / ready) from a typed mock. The data layer
+(`useAnalysis` hook, Edge Function call, `analyses` cache, Pro gate, upgrade
+flow) is Phase 4.4 / 4.5 — see those bullets below for what swaps in.
+
+**Deliberate deviations (prototype vs. governing docs):**
+
+1. **Score ring colour — bracket, not gold.** DESIGN_SYSTEM §5 SwingScore says
+   "gold ring", but the high-fidelity prototype colours the ring by score
+   *bracket* (78 = Great → success green) and reserves gold for the screen's
+   single CTA (the §1 "gold once per screen" non-negotiable). We followed the
+   prototype; `scoreBracket()` maps every bracket to a theme token. If we ever
+   want the gold ring back, it's a one-line change in `scoreBracket`.
+
+2. **IssueCard leading visual — severity glyph, not a frame thumbnail.** The
+   §22 4.3 bullet says "frame thumbnail"; the prototype uses a severity-colour
+   icon tile, and there are no real frames under mock data anyway. We followed
+   the prototype. The data carries `frameIndex`, so a thumbnail
+   (`frame_refs[frameIndex]`) can be added in 4.4 once real frames exist —
+   decide then whether to keep the glyph, swap to the thumbnail, or show both.
+
+**Deferred to a later phase:**
+
+- **Pro gate state.** The prototype's third AnalysisScreen state (score visible
+  + blurred teaser + "Get Pro" card) is the gated view. Phase 4.4 wraps the
+  screen in `<ProGate feature="AI Coaching" />` / the in-context gate; 4.5
+  builds the UpgradeSheet. Not built in 4.3.
+- **Tempo card + "+N on last session" delta.** Both are in the prototype's
+  ready screen but need pose-derived swing timing (backswing/downswing seconds,
+  3:1 ratio) and prior-analysis history — neither is in the `analyses` model.
+  Revisit with derived-pose metrics (Phase 3.3 compute layer) + progress
+  tracking (V1). Omitted rather than faked.
+- **Drill "Start" → real flow.** The gold "Start" CTA currently shows a
+  "Guided drills are coming soon" Toast. `DrillCard` is already forward-
+  compatible (AI_IMPLEMENTATION_GUIDE §13): pass a `thumbnailUri` + `onStart`
+  and it renders a launchable video drill with no component change. Wire it to
+  the static `src/constants/drills.ts` library (matched by `issue.name`) / V1
+  drill videos when that lands.
+- **Loading-state background still.** The prototype tucks a darkened swing
+  frame behind the sparkle; with mock data there's no frame, so the background
+  is solid. In 4.4 the loading state can show the current playback frame.
+- **Staged-progress rows** ("Frames extracted / Pose detected / Generating
+  coaching notes") are presentational in 4.3. 4.4 can drive them from the real
+  pipeline (extract → pose → Claude). Note "Pose detected" won't be truthful on
+  the Simulator (Vision can't run there) — gate the wording on the strategy the
+  frame extractor actually used (`'pose'` vs `'fallback'`).
+
+**Additions beyond the prototype's AnalysisScreen (spec-required):**
+
+- **CoachingCard** renders the `summary` / `coaching_text` (a §22 4.3
+  deliverable the prototype's analysis screen doesn't draw) in the Home
+  screen's quoted-coaching style, with a *neutral* AI mark so gold stays on the
+  drill CTA only.
+- **Header share** uses RN's built-in `Share` on the summary + score (no new
+  dep). Harmless on mock data; shares the real analysis in 4.4.
+
+**Remove in 4.4:**
+
+- `src/features/analysis/mockAnalysis.ts` — replaced by the `useAnalysis` hook
+  (cached `analyses` row → `SwingAnalysis` via the `coaching_text`/`swing_score`
+  → `summary`/`score` mapping).
+- The `__DEV__` state switcher in `AnalysisScreen` — it exists only so all
+  three states are inspectable on the Simulator; real state comes from the hook.
+
+**Minor visual notes:** the drill "Start" reuses the `Button` primitive
+(rounded-rect) rather than the mock's full-pill radius (one-Button rule wins,
+AI_IMPLEMENTATION_GUIDE §7); the SwingScore ring drops the prototype's
+`drop-shadow` glow (react-native-svg filter support is unreliable).
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

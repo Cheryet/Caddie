@@ -25,15 +25,18 @@ interface BadgeProps {
   size?: BadgeSize;
 }
 
-interface VariantPalette {
+export interface BadgePalette {
   bg: string;
   text: string;
   border: string;
 }
 
-// Hex values per DESIGN_SYSTEM.md §5 Badge spec. Kept local — these are
-// badge-only and shouldn't proliferate into other components.
-const PALETTE: Record<BadgeVariant, VariantPalette> = {
+// Hex values per DESIGN_SYSTEM.md §5 Badge spec. Kept local to the badge
+// family — these are badge fills and shouldn't proliferate as ad-hoc hex.
+// Exported so components that extend the badge visual language (e.g. the
+// analysis IssueCard's severity icon tile) reuse the exact same fills
+// instead of duplicating them (AI_IMPLEMENTATION_GUIDE §2 — reuse first).
+export const BADGE_PALETTE: Record<BadgeVariant, BadgePalette> = {
   gold: {
     bg: colors.gold.dim,
     text: colors.gold.text,
@@ -54,7 +57,7 @@ export function Badge({
   variant = 'neutral',
   size = 'md',
 }: BadgeProps) {
-  const palette = PALETTE[variant];
+  const palette = BADGE_PALETTE[variant];
   const isSmall = size === 'sm';
 
   return (
