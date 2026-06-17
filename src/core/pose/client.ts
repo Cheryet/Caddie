@@ -64,6 +64,12 @@ export interface PoseModule {
     videoPath: string,
     fps: number,
   ): Promise<PoseVideoFrame[]>;
+  extractJpegFrames(
+    videoPath: string,
+    timesMs: number[],
+    maxSize: number,
+    quality: number,
+  ): Promise<string[]>;
 }
 
 // Module-level state — single source of truth for the pose status.
@@ -202,6 +208,33 @@ export async function precomputePoses(
     throw new Error('Pose engine not ready — check isPoseReady() first');
   }
   return activeModule.detectPosesForVideo(videoUri, fps);
+}
+
+/**
+ * Extract the frames at `timesMs` from the video as base64 JPEGs (one per
+ * timestamp, same order), each capped to `maxSize` px on the long side at
+ * `quality` (0–100). The frame extractor (Phase 4.2) uses this to build the
+ * Claude Vision payload.
+ *
+ * Unlike the pose calls this only decodes pixels — it does NOT need Vision,
+ * so it intentionally does NOT gate on the engine being `ready`: it must
+ * still work when pose init failed (the iOS Simulator, or any device where
+ * the Vision probe fails) so the no-pose fallback path can extract frames.
+ * It only needs the native module present; reuse the already-loaded module
+ * when there is one, otherwise load it now. The package wrapper throws
+ * cleanly if the native side is genuinely absent.
+ *
+ * `loader` is injectable for tests; production callers leave it unset.
+ */
+export async function extractFrameJpegs(
+  videoUri: string,
+  timesMs: number[],
+  maxSize: number,
+  quality: number,
+  loader: () => PoseModule = defaultLoader,
+): Promise<string[]> {
+  const mod = activeModule ?? loader();
+  return mod.extractJpegFrames(videoUri, timesMs, maxSize, quality);
 }
 
 /**

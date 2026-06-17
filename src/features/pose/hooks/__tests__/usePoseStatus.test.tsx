@@ -29,6 +29,7 @@ describe('usePoseStatus', () => {
         detectOnVideoFrame: () =>
           Promise.resolve({ width: 0, height: 0, landmarks: [] }),
         detectPosesForVideo: () => Promise.resolve([]),
+        extractJpegFrames: () => Promise.resolve([]),
       }));
     });
     expect(result.current.status).toBe('ready');

@@ -953,6 +953,82 @@ exclude `supabase/`.
 
 ---
 
+## Phase 4.2 — Frame extraction utility: shipped (render verifies in 4.4)
+
+**Status:** SHIPPED 2026-06-17. Headless utility that turns a swing video
+into the 8 canonical analysis frames (base64 JPEGs ≤1200px @ q85). Consumed
+in Phase 4.4 — nothing in the UI calls it yet (same shape as 4.1).
+
+**What shipped:**
+- `src/constants/swingPositions.ts` — extended the existing scaffold with a
+  stable `id` per position + the fallback `fallbackFraction` schedule
+  (10/20/30/45/55/65/75/90%). Kept `name`/`detection`/`as const`.
+- `src/constants/config.ts` — `ANALYSIS_FRAME_MAX_PX = 1200`,
+  `ANALYSIS_FRAME_JPEG_QUALITY = 85` (spec §22 4.2).
+- **Native:** `caddie-pose`'s Obj-C bridge gains `extractJpegFrames(path,
+  timesMs[], maxSize, quality) -> base64[]` — reuses the proven
+  `localURLForVideo:` + `AVAssetImageGenerator` path (same decode pipeline
+  Vision uses), encodes each frame to JPEG + base64, slots results by
+  closest requested time, rejects on the first failed frame (clean 8-or-error).
+- `core/pose` exposes it as `extractFrameJpegs`. **Deliberately NOT gated on
+  the engine being `ready`:** frame extraction only decodes pixels (no
+  Vision), so it must work when pose init fails (the Simulator, or any device
+  where the Vision probe fails) — that's what lets the fallback path run.
+- `src/utils/frameExtractor.ts` — `detectSwingPositions(track, swingHand)`
+  (pure), `fallbackTimestamps(durationMs)` (pure), `extractAnalysisFrames`
+  (orchestration: pose path when ready+classifiable, else fallback, then
+  render). Returns `{ frames, strategy, timestampsMs }`.
+
+**Deviation from the spec bullet (deliberate):** spec says detection happens
+"via `detectPose`" (single image); we use the existing `precomputePoses`
+batch track instead — locating "max shoulder rotation" / "wrists lowest"
+needs poses across the WHOLE swing, so calling single-frame `detectPose`
+~100× would be absurd + slower. The batch path already exists (3.2 overlay).
+
+**swingHand (non-negotiable):** the spec's R-handed signals are generalised
+to lead/trail; the load-bearing one — top-of-backswing = peak shoulder
+rotation — is sign-normalised by hand inside `computePoseMetrics`, so the
+same argmax finds the top for both hands. A unit test pins that a
+right-handed swing read as left-handed bails to fallback (sign inverts).
+
+**2D limits / device tuning:** these are single-camera image-plane signals
+(see `core/pose/metrics`) — good enough to anchor the swing (top, impact)
+and interpolate the rest by phase, but the precise pose-path classification
+is tuned on a **physical device** (the Simulator can't run Vision at all),
+same constraint as the pose overlay. Until then the **fallback covers the
+Simulator** and any device where pose init fails.
+
+**Verified:**
+- `tsc` clean, `eslint src/` clean, **`jest` 370/370** (13 new: detector
+  anchoring for both hands, ordering, wrong-hand → null, too-short → null,
+  no-swing → null; the fallback schedule; orchestration branching across
+  pose / not-ready / unclassifiable / pre-compute-throws).
+- **Sim build+launch:** Debug build **SUCCEEDED, 0 errors**; the new Obj-C
+  compiled, linked, and the app **booted clean** (Home renders, signed-in
+  user, no redbox) → the native method is registered. A missing-symbol link
+  error would have crashed at launch.
+
+**Not yet exercised at runtime (lands in 4.4):** a real video → 8 base64
+JPEGs. There's no UI caller until the analyze flow exists, so the native
+method's *behaviour* (not just its linkage) verifies in 4.4 — the **fallback
+path is checkable in the Simulator** then (no Vision needed), the pose path
+on a device. The JS half is fully unit-tested; the native half mirrors the
+already-proven batch extractor.
+
+**Finding (pre-existing, not 4.2):** the build warns
+`-Wunguarded-availability-new` at `CaddiePose.m` on the EXISTING
+`detectOnVideoFrame`'s singular `generateCGImageAsynchronouslyForTime:`
+(iOS 16+) under an `if (@available(iOS 14.0, *))` guard. My new method uses
+the **plural** `generateCGImagesAsynchronouslyForTimes:` (iOS 14+), so it's
+unaffected — but the singular call in 3.2's code should get an iOS-16 guard
+or be switched to the plural API on a cleanup pass.
+
+**4.4 wiring:** call `extractAnalysisFrames(uri, { swingHand, durationMs })`
+in the analyze flow; pass `frames` to the Edge Function and feed
+`timestampsMs`/`strategy` into `frameRefs`/diagnostics.
+
+---
+
 ## Future feature — Video trim / clip-to-swing
 
 **Status:** Not scoped to any current phase. Captured as a user

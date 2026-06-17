@@ -29,6 +29,12 @@ interface CaddiePoseNativeModule {
     videoPath: string,
     fps: number,
   ): Promise<PoseVideoFrame[]>;
+  extractJpegFrames(
+    videoPath: string,
+    timesMs: number[],
+    maxSize: number,
+    quality: number,
+  ): Promise<string[]>;
 }
 
 const native = (NativeModules as { CaddiePose?: CaddiePoseNativeModule })
@@ -97,4 +103,23 @@ export async function detectPosesForVideo(
     throw new Error('CaddiePose native module not found');
   }
   return native.detectPosesForVideo(videoPath, fps);
+}
+
+/**
+ * Extract specific frames from the video as JPEGs — one base64-encoded
+ * string per timestamp in `timesMs`, in the same order, capped to `maxSize`
+ * px on the long side at `quality` (0–100). Used by the frame extractor
+ * (Phase 4.2) to build the 8-image payload for Claude Vision. Resolves with
+ * exactly `timesMs.length` strings or rejects if any frame fails.
+ */
+export async function extractJpegFrames(
+  videoPath: string,
+  timesMs: number[],
+  maxSize: number,
+  quality: number,
+): Promise<string[]> {
+  if (!native) {
+    throw new Error('CaddiePose native module not found');
+  }
+  return native.extractJpegFrames(videoPath, timesMs, maxSize, quality);
 }

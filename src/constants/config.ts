@@ -15,6 +15,10 @@ export const RECORDING_FRAME_RATE = 60;
 export const ANALYSIS_FRAME_COUNT = 8;
 export const CLAUDE_REQUEST_TIMEOUT_MS = 30_000;
 export const MAX_ANALYSES_PER_DAY = 10;
+// Extracted-frame encoding (PROJECT_SPEC.md §22 Phase 4.2): cap the long
+// side and JPEG-compress so the 8-image payload to Claude Vision stays small.
+export const ANALYSIS_FRAME_MAX_PX = 1200;
+export const ANALYSIS_FRAME_JPEG_QUALITY = 85;
 
 // ───── Upload / storage (PROJECT_SPEC.md §13 Storage) ─────
 export const VIDEO_COMPRESSION_TARGET_MB = 10;

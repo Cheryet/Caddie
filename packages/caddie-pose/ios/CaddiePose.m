@@ -51,6 +51,7 @@
 #import <CoreImage/CoreImage.h>
 #import <AVFoundation/AVFoundation.h>
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 @interface CaddiePose : NSObject <RCTBridgeModule>
 @end
@@ -61,6 +62,8 @@
 // callbacks finish, so without a strong ref ARC would deallocate it and
 // stop generation).
 @property (nonatomic, strong) AVAssetImageGenerator *activeBatchGenerator;
+// Same lifetime hack for extractJpegFrames' async generation (Phase 4.2).
+@property (nonatomic, strong) AVAssetImageGenerator *activeFrameGenerator;
 @end
 
 @implementation CaddiePose
@@ -454,6 +457,136 @@ RCT_EXPORT_METHOD(detectPosesForVideo:(NSString *)videoPath
       if (completed >= total) {
         weakSelf.activeBatchGenerator = nil;
         resolve(frames);
+      }
+    }];
+  } else {
+    reject(@"unsupported_os", @"iOS 14+ required", nil);
+  }
+}
+
+// Extract specific frames as JPEGs (Phase 4.2 frame extraction). Unlike the
+// pose methods, this returns the actual pixels: one base64-encoded JPEG per
+// requested timestamp, in the SAME order as `timesMs`, capped to `maxSize`
+// on the long side at `quality` (0–100). Reuses the proven local-download +
+// AVAssetImageGenerator path so the frames Claude sees come from the exact
+// decode pipeline Vision used. Rejects on the first failed frame so the JS
+// side gets a clean 8-or-error contract (Claude needs all 8).
+RCT_EXPORT_METHOD(extractJpegFrames:(NSString *)videoPath
+                  timesMs:(NSArray<NSNumber *> *)timesMs
+                  maxSize:(nonnull NSNumber *)maxSize
+                  quality:(nonnull NSNumber *)quality
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  if (@available(iOS 14.0, *)) {
+    NSURL *srcURL = [videoPath containsString:@"://"]
+        ? [NSURL URLWithString:videoPath]
+        : [NSURL fileURLWithPath:videoPath];
+    if (!srcURL) {
+      reject(@"invalid_video",
+             [NSString stringWithFormat:@"Bad URL: %@", videoPath],
+             nil);
+      return;
+    }
+    if (timesMs.count == 0) {
+      resolve(@[]);
+      return;
+    }
+
+    // Local copy once — extracting from a remote asset per frame is slow.
+    NSError *dlError = nil;
+    NSURL *localURL = [self localURLForVideo:srcURL error:&dlError];
+    if (!localURL) {
+      reject(@"download_failed",
+             dlError.localizedDescription ?: @"could not download video",
+             dlError);
+      return;
+    }
+
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:localURL options:nil];
+    AVAssetImageGenerator *generator =
+        [AVAssetImageGenerator assetImageGeneratorWithAsset:asset];
+    // Upright frame (matches how react-native-video shows it). maximumSize
+    // fits the image within the box preserving aspect, so the long side is
+    // capped at maxSize — exactly the spec's "max 1200px".
+    generator.appliesPreferredTrackTransform = YES;
+    CGFloat box = MAX(64.0, maxSize.doubleValue);
+    generator.maximumSize = CGSizeMake(box, box);
+    CMTime tol = CMTimeMakeWithSeconds(0.05, 600);
+    generator.requestedTimeToleranceBefore = tol;
+    generator.requestedTimeToleranceAfter = tol;
+    // Strong ref so the generator outlives this method returning.
+    self.activeFrameGenerator = generator;
+
+    NSUInteger total = timesMs.count;
+    NSMutableArray<NSValue *> *times = [NSMutableArray arrayWithCapacity:total];
+    for (NSNumber *ms in timesMs) {
+      [times addObject:
+          [NSValue valueWithCMTime:CMTimeMakeWithSeconds(ms.doubleValue / 1000.0, 600)]];
+    }
+
+    // Results are slotted by requested-time index (frames can arrive out of
+    // order) so the output order matches the input order.
+    NSMutableArray *results = [NSMutableArray arrayWithCapacity:total];
+    for (NSUInteger i = 0; i < total; i++) {
+      [results addObject:[NSNull null]];
+    }
+    CGFloat jpegQuality = MAX(0.0, MIN(1.0, quality.doubleValue / 100.0));
+    __block NSUInteger completed = 0;
+    __block BOOL settled = NO;
+    __weak CaddiePose *weakSelf = self;
+
+    [generator generateCGImagesAsynchronouslyForTimes:times
+        completionHandler:^(CMTime requestedTime,
+                            CGImageRef _Nullable image,
+                            CMTime actualTime,
+                            AVAssetImageGeneratorResult result,
+                            NSError *_Nullable error) {
+      if (settled) {
+        return;
+      }
+      if (result != AVAssetImageGeneratorSucceeded || !image) {
+        settled = YES;
+        weakSelf.activeFrameGenerator = nil;
+        reject(@"frame_failed",
+               error.localizedDescription ?: @"could not extract a frame",
+               error);
+        return;
+      }
+
+      UIImage *uiImage = [UIImage imageWithCGImage:image];
+      NSData *jpeg = UIImageJPEGRepresentation(uiImage, jpegQuality);
+      if (!jpeg) {
+        settled = YES;
+        weakSelf.activeFrameGenerator = nil;
+        reject(@"encode_failed", @"could not JPEG-encode a frame", nil);
+        return;
+      }
+
+      // Slot by closest requested time (robust to any CMTime normalisation;
+      // the JS side guarantees the timestamps are distinct).
+      Float64 reqSec = CMTimeGetSeconds(requestedTime);
+      NSUInteger bestIdx = 0;
+      Float64 bestDelta = INFINITY;
+      for (NSUInteger i = 0; i < total; i++) {
+        Float64 delta = fabs(CMTimeGetSeconds([times[i] CMTimeValue]) - reqSec);
+        if (delta < bestDelta) {
+          bestDelta = delta;
+          bestIdx = i;
+        }
+      }
+      results[bestIdx] = [jpeg base64EncodedStringWithOptions:0];
+
+      completed++;
+      if (completed >= total) {
+        settled = YES;
+        weakSelf.activeFrameGenerator = nil;
+        // Guard the all-8 contract: a duplicate-time collision could leave a
+        // hole. Shouldn't happen (JS dedupes) but never resolve a NSNull.
+        if ([results containsObject:[NSNull null]]) {
+          reject(@"frame_failed", @"a frame slot was left unfilled", nil);
+          return;
+        }
+        resolve(results);
       }
     }];
   } else {

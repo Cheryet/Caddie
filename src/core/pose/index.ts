@@ -8,6 +8,7 @@
 export {
   detectPose,
   detectPoseFrame,
+  extractFrameJpegs,
   getPoseError,
   getPoseStatus,
   initPose,

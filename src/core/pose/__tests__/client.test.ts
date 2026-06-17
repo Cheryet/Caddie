@@ -45,6 +45,7 @@ const fakeModule = (): PoseModule => ({
       ],
     },
   ]),
+  extractJpegFrames: jest.fn().mockResolvedValue(['/9j/base64jpeg']),
 });
 
 beforeEach(() => {
