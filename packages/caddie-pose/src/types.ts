@@ -36,3 +36,19 @@ export interface PoseFrameResult {
   /** Detected landmarks, normalised to the upright frame. */
   landmarks: PoseLandmark[];
 }
+
+/**
+ * One sampled frame from `detectPosesForVideo`. Like `PoseFrameResult`
+ * but tagged with its timestamp so the JS side can build a time-indexed
+ * track and look up the pose for any playback position.
+ */
+export interface PoseVideoFrame {
+  /** Sample timestamp in milliseconds from the start of the clip. */
+  timeMs: number;
+  /** Upright source-frame width in pixels. */
+  width: number;
+  /** Upright source-frame height in pixels. */
+  height: number;
+  /** Detected landmarks, normalised to the upright frame. */
+  landmarks: PoseLandmark[];
+}

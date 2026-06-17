@@ -31,7 +31,7 @@ import { useVideoSource } from '@/features/playback/hooks/useVideoSource';
 import { usePlayback } from '@/features/playback/hooks/usePlayback';
 import { useShareSwing } from '@/features/playback/hooks/useShareSwing';
 import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
-import { usePoseFrame } from '@/features/pose/hooks/usePoseFrame';
+import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
 import { useAppStore } from '@/store/useAppStore';
 import { uploadRecording } from '@/utils/upload';
@@ -88,13 +88,13 @@ export function PlaybackScreen({
   });
 
   // Pose overlay (Phase 3.2). Off by default; the pill only shows once
-  // the on-device engine reports ready. Detection runs on the current
-  // frame (debounced) while enabled — see usePoseFrame.
+  // the on-device engine reports ready. On enable, the whole clip's pose
+  // is pre-computed once (usePoseTrack) so the skeleton animates smoothly
+  // during playback + scrubbing via an instant frameAt() lookup.
   const [poseEnabled, setPoseEnabled] = useState(false);
   const poseStatus = usePoseStatus();
-  const poseFrame = usePoseFrame({
+  const poseTrack = usePoseTrack({
     uri: source.uri,
-    currentMs: playback.currentMs,
     enabled: poseEnabled,
   });
   const handleTogglePose = useCallback(() => {
@@ -137,6 +137,17 @@ export function PlaybackScreen({
       cancelled = true;
     };
   }, [params, userId]);
+
+  // Surface a one-off toast if the pose pre-compute fails (e.g. the clip
+  // couldn't be downloaded for analysis).
+  useEffect(() => {
+    if (poseTrack.status === 'error') {
+      Toast.show({
+        message: 'Could not analyze pose for this swing.',
+        variant: 'error',
+      });
+    }
+  }, [poseTrack.status]);
 
   // ─── Title strip ──────────────────────────────────────────────────────
   const title = source.meta?.clubType ?? source.meta?.title ?? 'Swing';
@@ -182,6 +193,9 @@ export function PlaybackScreen({
             uri={source.uri}
             paused={!playback.isPlaying}
             rate={playback.rate}
+            // Drive progress at ~30fps while the skeleton is live so it
+            // animates smoothly; back to 10fps otherwise.
+            progressUpdateIntervalMs={poseTrack.status === 'ready' ? 33 : 100}
             onLoadedDurationMs={playback.setDuration}
             onProgressMs={playback.setProgress}
             onEnd={playback.onEnd}
@@ -190,8 +204,13 @@ export function PlaybackScreen({
 
         {/* Pose skeleton sits above the video, below the drawing layer
             so annotations draw over it. Purely visual (pointerEvents
-            none), so it never steals taps from the player or canvas. */}
-        <PoseOverlay frame={poseFrame.frame} canvasSize={drawing.canvasSize} />
+            none), so it never steals taps from the player or canvas. The
+            pose for the current time is an instant lookup into the
+            pre-computed track, so it animates with playback. */}
+        <PoseOverlay
+          frame={poseTrack.frameAt(playback.currentMs)}
+          canvasSize={drawing.canvasSize}
+        />
 
         {/* Drawing layer sits above the player, below the chrome. When
             no tool is selected it's transparent to touches so the
@@ -247,6 +266,26 @@ export function PlaybackScreen({
       {uploadStatus.kind === 'uploading' || uploadStatus.kind === 'failed' ? (
         <UploadStatusPill status={uploadStatus} visible={playback.chromeVisible} />
       ) : null}
+
+      {poseTrack.status === 'analyzing' ? (
+        <PoseAnalyzingOverlay elapsedSec={poseTrack.elapsedSec} />
+      ) : null}
+    </View>
+  );
+}
+
+interface PoseAnalyzingOverlayProps {
+  elapsedSec: number;
+}
+
+function PoseAnalyzingOverlay({ elapsedSec }: PoseAnalyzingOverlayProps) {
+  return (
+    <View style={styles.analyzeWrap} pointerEvents="none">
+      <View style={styles.analyzeCard}>
+        <ActivityIndicator size="small" color={colors.gold.default} />
+        <Text style={styles.analyzeLabel}>Analyzing pose…</Text>
+        <Text style={styles.analyzeSub}>{elapsedSec}s</Text>
+      </View>
     </View>
   );
 }
@@ -382,5 +421,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.text.primary,
+  },
+  analyzeWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  analyzeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    borderRadius: 999,
+    backgroundColor: 'rgba(20,20,20,0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  analyzeLabel: {
+    ...typography.bodyStrong,
+    color: colors.text.primary,
+  },
+  analyzeSub: {
+    fontFamily: typography.dataSmall.fontFamily,
+    fontSize: 12,
+    color: colors.text.secondary,
   },
 });

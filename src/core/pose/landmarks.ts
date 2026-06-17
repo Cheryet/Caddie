@@ -43,50 +43,72 @@ export type PoseJoint =
   | 'rightAnkle';
 
 /**
- * Raw engine joint-name → stable joint. Apple Vision's
- * `VNHumanBodyPoseObservationJointName` raw values use rig-style names
- * (`left_upperArm_1_joint` for the shoulder, etc.). We map those, and
- * also alias the simpler `left_shoulder_1_joint` form the bridge's
- * original comment assumed — so the overlay works whichever naming the
- * installed OS / engine emits. Unknown names are ignored (with a
- * `__DEV__` warning) by `toPoseFrame`.
+ * Normalised joint-name core → stable joint. Apple Vision's
+ * `VNHumanBodyPoseObservationJointName` raw values are rig-style and
+ * vary across OS versions in two ways: the body-part token
+ * (`upperArm`/`forearm`/`hand`/`upLeg`/`leg`/`foot` vs the plain
+ * `shoulder`/`elbow`/`wrist`/`hip`/`knee`/`ankle`) and the suffix
+ * (`left_upLeg_1_joint` vs `left_upLeg_joint`). On-device testing showed
+ * the exact-string table only matched some joints. We instead normalise
+ * each raw name to a `{side}_{part}` core and map that, accepting both
+ * token styles — so the overlay surfaces every joint whichever naming
+ * the installed OS emits.
  */
-const RAW_NAME_TO_JOINT: Readonly<Record<string, PoseJoint>> = {
-  // Apple Vision rig-style raw values (what the device emits).
-  nose_1_joint: 'nose',
-  left_eye_1_joint: 'leftEye',
-  right_eye_1_joint: 'rightEye',
-  left_ear_1_joint: 'leftEar',
-  right_ear_1_joint: 'rightEar',
-  neck_1_joint: 'neck',
-  left_upperArm_1_joint: 'leftShoulder',
-  right_upperArm_1_joint: 'rightShoulder',
-  left_forearm_1_joint: 'leftElbow',
-  right_forearm_1_joint: 'rightElbow',
-  left_hand_1_joint: 'leftWrist',
-  right_hand_1_joint: 'rightWrist',
+const CORE_TO_JOINT: Readonly<Record<string, PoseJoint>> = {
+  nose: 'nose',
+  left_eye: 'leftEye',
+  right_eye: 'rightEye',
+  left_ear: 'leftEar',
+  right_ear: 'rightEar',
+  neck: 'neck',
   root: 'root',
-  left_upLeg_1_joint: 'leftHip',
-  right_upLeg_1_joint: 'rightHip',
-  left_leg_1_joint: 'leftKnee',
-  right_leg_1_joint: 'rightKnee',
-  left_foot_1_joint: 'leftAnkle',
-  right_foot_1_joint: 'rightAnkle',
-  // Defensive aliases — the simpler semantic names, in case an OS
-  // version or a future engine emits these instead.
-  left_shoulder_1_joint: 'leftShoulder',
-  right_shoulder_1_joint: 'rightShoulder',
-  left_elbow_1_joint: 'leftElbow',
-  right_elbow_1_joint: 'rightElbow',
-  left_wrist_1_joint: 'leftWrist',
-  right_wrist_1_joint: 'rightWrist',
-  left_hip_1_joint: 'leftHip',
-  right_hip_1_joint: 'rightHip',
-  left_knee_1_joint: 'leftKnee',
-  right_knee_1_joint: 'rightKnee',
-  left_ankle_1_joint: 'leftAnkle',
-  right_ankle_1_joint: 'rightAnkle',
+  // shoulders (rig token: upperArm)
+  left_shoulder: 'leftShoulder',
+  left_upperarm: 'leftShoulder',
+  right_shoulder: 'rightShoulder',
+  right_upperarm: 'rightShoulder',
+  // elbows (rig token: forearm)
+  left_elbow: 'leftElbow',
+  left_forearm: 'leftElbow',
+  right_elbow: 'rightElbow',
+  right_forearm: 'rightElbow',
+  // wrists (rig token: hand)
+  left_wrist: 'leftWrist',
+  left_hand: 'leftWrist',
+  right_wrist: 'rightWrist',
+  right_hand: 'rightWrist',
+  // hips (rig token: upLeg)
+  left_hip: 'leftHip',
+  left_upleg: 'leftHip',
+  right_hip: 'rightHip',
+  right_upleg: 'rightHip',
+  // knees (rig token: leg)
+  left_knee: 'leftKnee',
+  left_leg: 'leftKnee',
+  right_knee: 'rightKnee',
+  right_leg: 'rightKnee',
+  // ankles (rig token: foot)
+  left_ankle: 'leftAnkle',
+  left_foot: 'leftAnkle',
+  right_ankle: 'rightAnkle',
+  right_foot: 'rightAnkle',
 };
+
+/**
+ * Reduce a raw Vision joint name to its `{side}_{part}` core: lowercase,
+ * drop the trailing `_joint`, then any trailing `_<digits>`. Returns the
+ * stable joint, or null when nothing matches.
+ *   "left_forearm_1_joint" → "left_forearm" → leftElbow
+ *   "right_upLeg_joint"    → "right_upleg"  → rightHip
+ *   "neck_1_joint"         → "neck"         → neck
+ */
+export function normalizeJointName(raw: string): PoseJoint | null {
+  const core = raw
+    .toLowerCase()
+    .replace(/_joint$/, '')
+    .replace(/_\d+$/, '');
+  return CORE_TO_JOINT[core] ?? null;
+}
 
 /**
  * The bones the overlay draws, as joint pairs. Order doesn't matter; a
@@ -137,8 +159,10 @@ export const FACE_JOINTS: ReadonlySet<PoseJoint> = new Set<PoseJoint>([
   'rightEar',
 ]);
 
-/** Vision noise floor — points below this confidence are dropped. */
-export const MIN_JOINT_CONFIDENCE = 0.1;
+/** Vision noise floor — points below this confidence are dropped.
+ *  Undetected joints come back at ~0 confidence; a low floor keeps the
+ *  occluded-but-real limbs (often 0.1–0.4) while dropping the garbage. */
+export const MIN_JOINT_CONFIDENCE = 0.05;
 
 /** A single mapped, projected-ready joint point. */
 export interface PoseJointPoint {
@@ -170,7 +194,7 @@ export function toPoseFrame(
   const joints: Partial<Record<PoseJoint, PoseJointPoint>> = {};
 
   for (const landmark of raw) {
-    const joint = RAW_NAME_TO_JOINT[landmark.name];
+    const joint = normalizeJointName(landmark.name);
     if (!joint) {
       if (__DEV__) {
         console.warn(`[pose] unmapped joint name: ${landmark.name}`);

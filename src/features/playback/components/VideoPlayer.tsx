@@ -22,6 +22,12 @@ interface VideoPlayerProps {
   paused: boolean;
   /** Playback rate. 1 = normal, 0.5 = half-speed, etc. */
   rate: number;
+  /**
+   * How often onProgress fires, in ms. Defaults to 100 (10fps). The pose
+   * overlay raises this to ~33 (30fps) so the skeleton animates smoothly
+   * with playback.
+   */
+  progressUpdateIntervalMs?: number;
   onLoadedDurationMs: (durationMs: number) => void;
   onProgressMs: (currentMs: number) => void;
   onEnd: () => void;
@@ -35,7 +41,16 @@ export interface VideoPlayerHandle {
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
   function VideoPlayerImpl(
-    { uri, paused, rate, onLoadedDurationMs, onProgressMs, onEnd, onError },
+    {
+      uri,
+      paused,
+      rate,
+      progressUpdateIntervalMs = 100,
+      onLoadedDurationMs,
+      onProgressMs,
+      onEnd,
+      onError,
+    },
     ref,
   ) {
     const videoRef = useRef<VideoRef>(null);
@@ -61,7 +76,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
           resizeMode="contain"
           controls={false}
           repeat={false}
-          progressUpdateInterval={100}
+          progressUpdateInterval={progressUpdateIntervalMs}
           onLoad={data => onLoadedDurationMs(data.duration * 1000)}
           onProgress={data => onProgressMs(data.currentTime * 1000)}
           onEnd={onEnd}

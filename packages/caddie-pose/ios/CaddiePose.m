@@ -55,6 +55,14 @@
 @interface CaddiePose : NSObject <RCTBridgeModule>
 @end
 
+@interface CaddiePose ()
+// Holds the in-flight batch generator alive for the duration of
+// detectPosesForVideo's async extraction (the method returns before the
+// callbacks finish, so without a strong ref ARC would deallocate it and
+// stop generation).
+@property (nonatomic, strong) AVAssetImageGenerator *activeBatchGenerator;
+@end
+
 @implementation CaddiePose
 
 RCT_EXPORT_MODULE();
@@ -132,6 +140,83 @@ RCT_EXPORT_MODULE();
   }];
 
   return landmarks;
+}
+
+// Cached AVAssetImageGenerator keyed by URL. Building the asset is the
+// expensive part for a remote video (the original code rebuilt it on
+// every scrub, so each frame re-loaded the asset — that was the bulk of
+// the "5+ seconds" lag). Reusing a single warm generator per URL makes
+// every frame after the first fast. Only ever touched from the serial
+// methodQueue, so the dictionary needs no locking.
+- (AVAssetImageGenerator *)generatorForURL:(NSURL *)url {
+  static NSMutableDictionary<NSString *, AVAssetImageGenerator *> *cache;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    cache = [NSMutableDictionary dictionary];
+  });
+
+  NSString *key = url.absoluteString ?: @"";
+  AVAssetImageGenerator *cached = cache[key];
+  if (cached) {
+    return cached;
+  }
+
+  AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
+  AVAssetImageGenerator *generator =
+      [AVAssetImageGenerator assetImageGeneratorWithAsset:asset];
+  // Upright frame so it lines up with how react-native-video shows it.
+  generator.appliesPreferredTrackTransform = YES;
+  // Vision doesn't need full resolution — cap the long side so decode +
+  // inference stay cheap without hurting joint accuracy.
+  generator.maximumSize = CGSizeMake(1280, 1280);
+  // Small tolerance keeps scrubbing responsive (≤~1 frame off is
+  // imperceptible for a skeleton overlay).
+  CMTime tolerance = CMTimeMakeWithSeconds(0.1, 600);
+  generator.requestedTimeToleranceBefore = tolerance;
+  generator.requestedTimeToleranceAfter = tolerance;
+
+  cache[key] = generator;
+  return generator;
+}
+
+// Local copy of a (possibly remote) video, cached by URL. Batch frame
+// extraction needs the file local — seeking a remote asset hundreds of
+// times would take minutes. File URLs pass through untouched; remote
+// URLs are downloaded once to a temp file. Returns nil + sets *error on
+// failure. Runs on the serial methodQueue, so the cache needs no lock.
+- (NSURL *)localURLForVideo:(NSURL *)url error:(NSError **)error {
+  if (url.isFileURL) {
+    return url;
+  }
+
+  static NSMutableDictionary<NSString *, NSURL *> *cache;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    cache = [NSMutableDictionary dictionary];
+  });
+
+  NSString *key = url.absoluteString ?: @"";
+  NSURL *cached = cache[key];
+  if (cached &&
+      [[NSFileManager defaultManager] fileExistsAtPath:cached.path]) {
+    return cached;
+  }
+
+  NSData *data = [NSData dataWithContentsOfURL:url options:0 error:error];
+  if (!data) {
+    return nil;
+  }
+
+  NSString *fileName =
+      [[NSUUID UUID].UUIDString stringByAppendingPathExtension:@"mp4"];
+  NSURL *dest = [[NSURL fileURLWithPath:NSTemporaryDirectory()]
+      URLByAppendingPathComponent:fileName];
+  if (![data writeToURL:dest options:NSDataWritingAtomic error:error]) {
+    return nil;
+  }
+
+  cache[key] = dest;
+  return dest;
 }
 
 RCT_EXPORT_METHOD(initialize:(RCTPromiseResolveBlock)resolve
@@ -215,17 +300,8 @@ RCT_EXPORT_METHOD(detectOnVideoFrame:(NSString *)videoPath
       return;
     }
 
-    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
-    AVAssetImageGenerator *generator =
-        [AVAssetImageGenerator assetImageGeneratorWithAsset:asset];
-    // Upright frame so it matches how react-native-video displays it
-    // (resizeMode="contain") — keeps the overlay aligned.
-    generator.appliesPreferredTrackTransform = YES;
-    // A small tolerance keeps scrub responsive; landing within ~1 frame
-    // of the requested time is imperceptible for a skeleton overlay.
-    CMTime tolerance = CMTimeMakeWithSeconds(0.1, 600);
-    generator.requestedTimeToleranceBefore = tolerance;
-    generator.requestedTimeToleranceAfter = tolerance;
+    // Reuse a warm, cached generator for this URL (see generatorForURL:).
+    AVAssetImageGenerator *generator = [self generatorForURL:url];
 
     CMTime time = CMTimeMakeWithSeconds(timeMs.doubleValue / 1000.0, 600);
 
@@ -282,6 +358,104 @@ RCT_EXPORT_METHOD(detectOnVideoFrame:(NSString *)videoPath
       @"height": @(height),
       @"landmarks": landmarks,
     });
+  } else {
+    reject(@"unsupported_os", @"iOS 14+ required", nil);
+  }
+}
+
+RCT_EXPORT_METHOD(detectPosesForVideo:(NSString *)videoPath
+                  fps:(nonnull NSNumber *)fps
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  if (@available(iOS 14.0, *)) {
+    NSURL *srcURL = [videoPath containsString:@"://"]
+        ? [NSURL URLWithString:videoPath]
+        : [NSURL fileURLWithPath:videoPath];
+    if (!srcURL) {
+      reject(@"invalid_video",
+             [NSString stringWithFormat:@"Bad URL: %@", videoPath],
+             nil);
+      return;
+    }
+
+    // Download to a local file once — batch seeking a remote asset is
+    // prohibitively slow.
+    NSError *dlError = nil;
+    NSURL *localURL = [self localURLForVideo:srcURL error:&dlError];
+    if (!localURL) {
+      reject(@"download_failed",
+             dlError.localizedDescription ?: @"could not download video",
+             dlError);
+      return;
+    }
+
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:localURL options:nil];
+    Float64 duration = CMTimeGetSeconds(asset.duration);
+    double sampleFps = fps.doubleValue > 0 ? fps.doubleValue : 30.0;
+    if (!(duration > 0)) {
+      reject(@"invalid_video", @"could not read video duration", nil);
+      return;
+    }
+
+    AVAssetImageGenerator *generator =
+        [AVAssetImageGenerator assetImageGeneratorWithAsset:asset];
+    generator.appliesPreferredTrackTransform = YES;
+    generator.maximumSize = CGSizeMake(1280, 1280);
+    // Half-sample tolerance keeps extraction fast while staying on the
+    // right frame.
+    CMTime tol = CMTimeMakeWithSeconds(1.0 / (sampleFps * 2.0), 600);
+    generator.requestedTimeToleranceBefore = tol;
+    generator.requestedTimeToleranceAfter = tol;
+    // Strong ref so the generator survives past this method returning.
+    self.activeBatchGenerator = generator;
+
+    // One sample every 1/fps seconds across the clip.
+    double step = 1.0 / sampleFps;
+    NSMutableArray<NSValue *> *times = [NSMutableArray array];
+    for (double t = 0; t < duration; t += step) {
+      [times addObject:[NSValue valueWithCMTime:CMTimeMakeWithSeconds(t, 600)]];
+    }
+    NSUInteger total = times.count;
+    if (total == 0) {
+      self.activeBatchGenerator = nil;
+      resolve(@[]);
+      return;
+    }
+
+    // The completion handler is invoked serially per requested time, so
+    // appending to `frames` / bumping `completed` needs no lock. Frames
+    // may arrive out of order — the JS side sorts by timeMs.
+    NSMutableArray *frames = [NSMutableArray arrayWithCapacity:total];
+    __block NSUInteger completed = 0;
+    __weak CaddiePose *weakSelf = self;
+
+    [generator generateCGImagesAsynchronouslyForTimes:times
+        completionHandler:^(CMTime requestedTime,
+                            CGImageRef _Nullable image,
+                            CMTime actualTime,
+                            AVAssetImageGeneratorResult result,
+                            NSError *_Nullable error) {
+      if (result == AVAssetImageGeneratorSucceeded && image) {
+        CIImage *ci = [CIImage imageWithCGImage:image];
+        NSError *visionError = nil;
+        NSArray *landmarks = [weakSelf landmarksFromCIImage:ci
+                                                      error:&visionError];
+        if (landmarks) {
+          [frames addObject:@{
+            @"timeMs": @(CMTimeGetSeconds(requestedTime) * 1000.0),
+            @"width": @(CGImageGetWidth(image)),
+            @"height": @(CGImageGetHeight(image)),
+            @"landmarks": landmarks,
+          }];
+        }
+      }
+      // Failed / Cancelled frames are simply skipped (JS tolerates gaps).
+      completed++;
+      if (completed >= total) {
+        weakSelf.activeBatchGenerator = nil;
+        resolve(frames);
+      }
+    }];
   } else {
     reject(@"unsupported_os", @"iOS 14+ required", nil);
   }

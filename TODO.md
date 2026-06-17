@@ -47,6 +47,42 @@ keep a paper trail.
 
 ---
 
+## Pose overlay — pre-computed track (animates during playback)
+
+**Decision:** When the user enables Pose, the whole clip's body pose is
+**pre-computed once** (30fps samples) into a time-indexed track; the overlay
+then looks up the pose for the current time. Deliberate step beyond
+PROJECT_SPEC §22 3.2 ("run pose detection on the current frame as the user
+scrubs").
+
+**Why:** On-device per-frame detection (the literal §3.2 reading) was too slow
+on a real device — first skeleton took 5+s (remote frame extraction) and it
+lagged behind during playback; on-demand detection can't keep up with live
+playback. Pre-computing makes scrubbing instant and the skeleton animate
+smoothly during playback at any speed.
+
+**How it works:**
+- Native `detectPosesForVideo(uri, fps)` downloads the clip locally once
+  (remote per-frame seeking is the bottleneck), batch-extracts frames via
+  `generateCGImagesAsynchronouslyForTimes:`, runs Vision on each, returns
+  `[{timeMs,width,height,landmarks}]`.
+- `buildPoseTrack` maps + sorts; `poseAt(track, ms)` is an O(log n) lookup.
+  `usePoseTrack` orchestrates analyze→ready, caches the track per uri for the
+  session, and shows an "Analyzing pose…" indicator.
+- The player runs `onProgress` at ~30fps while a track is live so the overlay
+  animates in sync (`progressUpdateIntervalMs`).
+
+**Deferred / future:**
+- **Cross-session persistence** — the track is in-memory only; re-opening a
+  video re-analyzes. Persist to MMKV/Supabase so a clip analyzes once ever.
+- **Native cancellation** — toggling pose off mid-analyze abandons the result
+  in JS, but the native batch runs to completion (~10s wasted compute,
+  harmless). Add `cancelAllCGImageGeneration` if it matters.
+- **Progress %** — currently an elapsed-time spinner (no RCTEventEmitter); a
+  real progress bar needs native progress events.
+
+---
+
 ## Authentication — email confirmation
 
 **Status:** Workaround in place. Email confirmation is **disabled** on the

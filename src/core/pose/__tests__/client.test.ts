@@ -16,6 +16,7 @@ import {
   getPoseStatus,
   initPose,
   isPoseReady,
+  precomputePoses,
   subscribePoseStatus,
   type PoseModule,
 } from '../client';
@@ -34,6 +35,16 @@ const fakeModule = (): PoseModule => ({
       { name: 'left_shoulder_1_joint', x: 0.4, y: 0.3, z: 0, visibility: 0.9 },
     ],
   }),
+  detectPosesForVideo: jest.fn().mockResolvedValue([
+    {
+      timeMs: 0,
+      width: 1080,
+      height: 1920,
+      landmarks: [
+        { name: 'left_shoulder_1_joint', x: 0.4, y: 0.3, z: 0, visibility: 0.9 },
+      ],
+    },
+  ]),
 });
 
 beforeEach(() => {
@@ -128,5 +139,21 @@ describe('pose/client', () => {
 
   it('detectPoseFrame rejects when the engine is not ready', async () => {
     await expect(detectPoseFrame('x', 0)).rejects.toThrow(/not ready/);
+  });
+
+  it('precomputePoses proxies the uri + fps to the active engine', async () => {
+    const mod = fakeModule();
+    await initPose(() => mod);
+    const frames = await precomputePoses('file:///tmp/swing.mov', 30);
+    expect(mod.detectPosesForVideo).toHaveBeenCalledWith(
+      'file:///tmp/swing.mov',
+      30,
+    );
+    expect(frames).toHaveLength(1);
+    expect(frames[0]?.timeMs).toBe(0);
+  });
+
+  it('precomputePoses rejects when the engine is not ready', async () => {
+    await expect(precomputePoses('x', 30)).rejects.toThrow(/not ready/);
   });
 });

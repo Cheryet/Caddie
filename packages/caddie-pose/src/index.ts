@@ -12,7 +12,11 @@
 
 import { NativeModules } from 'react-native';
 
-import type { PoseFrameResult, PoseLandmark } from './types';
+import type {
+  PoseFrameResult,
+  PoseLandmark,
+  PoseVideoFrame,
+} from './types';
 
 interface CaddiePoseNativeModule {
   initialize(): Promise<boolean>;
@@ -21,12 +25,20 @@ interface CaddiePoseNativeModule {
     videoPath: string,
     timeMs: number,
   ): Promise<PoseFrameResult>;
+  detectPosesForVideo(
+    videoPath: string,
+    fps: number,
+  ): Promise<PoseVideoFrame[]>;
 }
 
 const native = (NativeModules as { CaddiePose?: CaddiePoseNativeModule })
   .CaddiePose;
 
-export { type PoseFrameResult, type PoseLandmark } from './types';
+export {
+  type PoseFrameResult,
+  type PoseLandmark,
+  type PoseVideoFrame,
+} from './types';
 
 /**
  * Verify the native module is registered, the OS supports Vision, AND
@@ -68,4 +80,21 @@ export async function detectOnVideoFrame(
     throw new Error('CaddiePose native module not found');
   }
   return native.detectOnVideoFrame(videoPath, timeMs);
+}
+
+/**
+ * Pre-compute body pose for the whole video at `fps` samples/second.
+ * Downloads the clip locally first (remote per-frame seeking is far too
+ * slow), then batch-extracts every sample frame and runs Vision on each.
+ * Resolves with one `PoseVideoFrame` per sample, ascending by time.
+ * Used by the playback overlay so the skeleton animates instantly.
+ */
+export async function detectPosesForVideo(
+  videoPath: string,
+  fps: number,
+): Promise<PoseVideoFrame[]> {
+  if (!native) {
+    throw new Error('CaddiePose native module not found');
+  }
+  return native.detectPosesForVideo(videoPath, fps);
 }

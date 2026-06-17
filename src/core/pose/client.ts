@@ -42,6 +42,7 @@ import type {
   PoseInitError,
   PoseLandmark,
   PoseStatus,
+  PoseVideoFrame,
 } from './types';
 
 type Listener = (status: PoseStatus, error: PoseInitError | null) => void;
@@ -59,6 +60,10 @@ export interface PoseModule {
     videoPath: string,
     timeMs: number,
   ): Promise<PoseFrameResult>;
+  detectPosesForVideo(
+    videoPath: string,
+    fps: number,
+  ): Promise<PoseVideoFrame[]>;
 }
 
 // Module-level state — single source of truth for the pose status.
@@ -179,6 +184,24 @@ export async function detectPoseFrame(
     throw new Error('Pose engine not ready — check isPoseReady() first');
   }
   return activeModule.detectOnVideoFrame(videoUri, timeMs);
+}
+
+/**
+ * Pre-compute body pose across the whole video at `fps` samples/second.
+ * The heavy lifting (one-time download + batch frame extraction + Vision
+ * per frame) runs natively; this returns the raw per-sample frames which
+ * `buildPoseTrack` turns into a time-indexed, lookup-ready track.
+ *
+ * Throws when the engine isn't ready — gate on `isPoseReady()` first.
+ */
+export async function precomputePoses(
+  videoUri: string,
+  fps: number,
+): Promise<PoseVideoFrame[]> {
+  if (!activeModule) {
+    throw new Error('Pose engine not ready — check isPoseReady() first');
+  }
+  return activeModule.detectPosesForVideo(videoUri, fps);
 }
 
 /**

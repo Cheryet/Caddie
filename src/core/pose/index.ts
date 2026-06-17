@@ -12,12 +12,14 @@ export {
   getPoseStatus,
   initPose,
   isPoseReady,
+  precomputePoses,
   subscribePoseStatus,
 } from './client';
 export {
   FACE_JOINTS,
   KEY_JOINTS,
   MIN_JOINT_CONFIDENCE,
+  normalizeJointName,
   SKELETON_BONES,
   toPoseFrame,
 } from './landmarks';
@@ -26,9 +28,12 @@ export type {
   PoseJoint,
   PoseJointPoint,
 } from './landmarks';
+export { buildPoseTrack, poseAt } from './track';
+export type { PoseTrack, PoseTrackSample } from './track';
 export type {
   PoseFrameResult,
   PoseInitError,
   PoseLandmark,
   PoseStatus,
+  PoseVideoFrame,
 } from './types';
