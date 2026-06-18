@@ -102,6 +102,12 @@ export function PlaybackScreen({
   }, []);
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: 'idle' });
+  // The swing is analysable once it has a saved row id — immediately for a
+  // library video, or after the background upload for a fresh recording.
+  // Drives the "Analyse with AI" CTA (Phase 4.4).
+  const [analyzableVideoId, setAnalyzableVideoId] = useState<string | null>(
+    persistedVideoId,
+  );
 
   // ─── Background upload for fresh recordings ────────────────────────────
   // Mirrors the previous behavior of this screen but no longer blocks
@@ -131,6 +137,8 @@ export function PlaybackScreen({
         });
       } else {
         setUploadStatus({ kind: 'uploaded' });
+        // A fresh recording can now be analysed — reveal the CTA.
+        setAnalyzableVideoId(result.data?.videoId ?? null);
       }
     })();
     return () => {
@@ -165,6 +173,11 @@ export function PlaybackScreen({
       // Errors are toasted inside the hook; nothing more to do here.
     });
   }, [shareSwing]);
+
+  const handleAnalyse = useCallback(() => {
+    if (!analyzableVideoId) return;
+    navigation.navigate('Analysis', { videoId: analyzableVideoId });
+  }, [navigation, analyzableVideoId]);
 
   // ─── Body branches ────────────────────────────────────────────────────
   if (source.error) {
@@ -250,6 +263,7 @@ export function PlaybackScreen({
         poseAvailable={poseStatus.status === 'ready'}
         poseEnabled={poseEnabled}
         onTogglePose={handleTogglePose}
+        onAnalyse={analyzableVideoId ? handleAnalyse : undefined}
       >
         <DrawingToolbar
           tool={drawing.tool}

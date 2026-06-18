@@ -1180,6 +1180,54 @@ AI_IMPLEMENTATION_GUIDE §7); the SwingScore ring drops the prototype's
 
 ---
 
+## Phase 4.4 — End-to-end analysis flow: wired (real Claude e2e pending device)
+
+**Status:** ✅ Built in two commits. (a) `useAnalysis` + `parseAnalysis` +
+AnalysisScreen wired to live data behind `<ProGate feature="AI Coaching" />`;
+(b) the gold "Analyse with AI" CTA on PlaybackScreen → `Analysis { videoId }`.
+Cache hit renders with no API call; a miss extracts the 8 frames and calls the
+`analyze-swing` Edge Function (Claude key never ships). Full gate green;
+sim build clean + the ProGate state verified on device.
+
+**Pending on-device verification (closes the §4.1 "Claude 200 e2e in 4.4"
+item):** the real cache-hit render with DB data AND the real Claude round-trip
+need a recorded+uploaded swing. The Simulator can't get there — no camera, and
+the report path needs `isPro = true` (a tap the MCP can't drive) plus a real
+analysis costs ~$0.01. Verify on the physical device (same window as the
+pending pose verification): record → "Analyse with AI" → loading → report;
+re-open → cache hit (no second Claude call).
+
+**Deliberate decisions:**
+- **Pro gate = the mandated `<ProGate feature="AI Coaching" />`**, NOT the
+  prototype's bespoke "score visible + blurred teaser + Get Pro" gate. The
+  CLAUDE.md non-negotiable ("Pro gating is always `<ProGate>`, never a custom
+  modal") wins. A free user can't see a score anyway — computing it needs the
+  Claude call. If we ever want the richer in-context gate, extend the ProGate
+  component (don't inline a one-off).
+- **Fresh-recording CTA appears only after upload completes** — a swing has no
+  `videoId` until its row exists, and you can't analyse an unsaved swing. The
+  CTA is hidden during the background upload, then revealed (PlaybackScreen
+  captures `uploadRecording`'s returned `videoId`).
+- **Null video meta defaults**: the Edge Function requires non-empty
+  `cameraAngle`/`clubType`; when the row has null we send `'face-on'` /
+  `'Unknown'`. Revisit if it skews Claude's read.
+
+**Deferred:**
+- **`previousIssues` is sent as `[]`.** §14 wants prior-swing issue context fed
+  to the prompt for continuity — enrich from the user's recent `analyses` once
+  progress tracking exists.
+- **Loading staged-progress is still presentational** (carried from 4.3). 4.4
+  could drive "Frames extracted / Pose detected / Generating…" from the real
+  pipeline — and gate the "Pose detected" wording on the frame extractor's
+  actual `strategy` ('pose' vs 'fallback'), since pose can't run on the sim.
+- **Explicit "Refresh analysis" affordance**: the hook exposes `refresh()`
+  (used by error-retry) but there's no refresh button in the report UI yet
+  (§14 "regenerated only when the user taps refresh"). Add one when wanted.
+- **UpgradeSheet (Phase 4.5)**: the ProGate "Upgrade to Pro" CTA is still the
+  Phase-0.8 no-op (warns in `__DEV__`). 4.5 wires RevenueCat `purchasePackage`.
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

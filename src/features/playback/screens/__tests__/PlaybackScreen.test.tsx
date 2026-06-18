@@ -69,9 +69,22 @@ jest.mock('@/store/useAppStore', () => ({
     selector({ user: { id: 'user-1' } }),
 }));
 
-jest.mock('@/components/ui', () => ({
-  Toast: { show: jest.fn() },
-}));
+jest.mock('@/components/ui', () => {
+  const React = require('react');
+  const { Pressable, Text } = require('react-native');
+  return {
+    Toast: { show: jest.fn() },
+    // Button is rendered by PlaybackChrome's "Analyse with AI" CTA — stub it
+    // as a pressable carrying its label so the screen renders + the CTA is
+    // tappable.
+    Button: ({ label, onPress }: { label: string; onPress: () => void }) =>
+      React.createElement(
+        Pressable,
+        { onPress, accessibilityRole: 'button' },
+        React.createElement(Text, null, label),
+      ),
+  };
+});
 
 jest.mock('@/features/playback/components/VideoPlayer', () => {
   const React = require('react');
@@ -171,6 +184,18 @@ describe('PlaybackScreen', () => {
     );
     expect(getByTestId('video-player-stub')).toBeTruthy();
     expect(getByText('7 Iron')).toBeTruthy();
+  });
+
+  it('navigates to Analysis when the Analyse with AI CTA is tapped', () => {
+    const nav = makeNav();
+    const { getByText } = wrap(
+      <PlaybackScreen
+        navigation={nav}
+        route={{ key: 'k', name: 'Playback', params: { videoId: 'vid-1' } }}
+      />,
+    );
+    fireEvent.press(getByText('Analyse with AI'));
+    expect(nav.navigate).toHaveBeenCalledWith('Analysis', { videoId: 'vid-1' });
   });
 
   it('renders the loading view when source is not ready', () => {

@@ -149,4 +149,18 @@ describe('PlaybackChrome', () => {
       getByLabelText('Toggle pose overlay').props.accessibilityState.selected,
     ).toBe(true);
   });
+
+  it('hides the Analyse with AI CTA until the swing is analysable', () => {
+    const { queryByText } = wrap(<PlaybackChrome {...baseProps} />);
+    expect(queryByText('Analyse with AI')).toBeNull();
+  });
+
+  it('shows the Analyse with AI CTA and dispatches onAnalyse', () => {
+    const onAnalyse = jest.fn();
+    const { getByText } = wrap(
+      <PlaybackChrome {...baseProps} onAnalyse={onAnalyse} />,
+    );
+    fireEvent.press(getByText('Analyse with AI'));
+    expect(onAnalyse).toHaveBeenCalled();
+  });
 });

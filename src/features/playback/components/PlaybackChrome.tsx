@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path, Polyline, Rect } from 'react-native-svg';
 
+import { Button } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 import { PLAYBACK_RATES, type PlaybackRate } from '@/features/playback/hooks/usePlayback';
 
@@ -51,6 +52,11 @@ interface PlaybackChromeProps {
   poseAvailable?: boolean;
   poseEnabled?: boolean;
   onTogglePose?: () => void;
+  // "Analyse with AI" CTA (Phase 4.4). Only rendered once the swing is
+  // analysable — i.e. it has a saved videoId (a library video, or a fresh
+  // recording after its background upload completes). Omitted otherwise so
+  // we never offer analysis on a swing that isn't saved yet.
+  onAnalyse?: () => void;
   /** Optional overlay rendered inside the chrome's fade region. Used
    *  by Phase 2.2's DrawingToolbar so it auto-hides with the chrome. */
   children?: ReactNode;
@@ -76,6 +82,7 @@ export function PlaybackChrome({
   poseAvailable = false,
   poseEnabled = false,
   onTogglePose,
+  onAnalyse,
   children,
 }: PlaybackChromeProps) {
   const insets = useSafeAreaInsets();
@@ -212,6 +219,22 @@ export function PlaybackChrome({
         ]}
         pointerEvents="box-none"
       >
+        {/* Analyse with AI — the playback screen's single gold element
+            (design §02). Reuses the Button primitive (one-Button rule);
+            its radius is the app-standard rounded-rect, not the mock's
+            full pill. */}
+        {onAnalyse ? (
+          <View style={styles.analyseRow}>
+            <Button
+              label="Analyse with AI"
+              variant="primary"
+              onPress={onAnalyse}
+              shadow
+              icon={<AnalyseSparkleIcon />}
+            />
+          </View>
+        ) : null}
+
         {/* Transport */}
         <View style={styles.transportRow}>
           <Pressable
@@ -321,6 +344,20 @@ function formatRate(rate: PlaybackRate): string {
   return `${rate}×`;
 }
 
+// ───── Icons ─────────────────────────────────────────────────────────────
+
+// Sparkle mark for the "Analyse with AI" CTA — paths verbatim from
+// Design/Caddie Screens.dc.html §02 (line 238). Inverse-filled to read on
+// the gold button.
+function AnalyseSparkleIcon() {
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill={colors.text.inverse}>
+      <Path d="M12 2l1.6 6.6L20 10l-6.4 1.4L12 18l-1.6-6.6L4 10l6.4-1.4z" />
+      <Path d="M19 3l.7 2.3L22 6l-2.3.7L19 9l-.7-2.3L16 6l2.3-.7z" />
+    </Svg>
+  );
+}
+
 // ───── Styles ────────────────────────────────────────────────────────────
 
 const TOP_SCRIM_HEIGHT = 150;
@@ -414,6 +451,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing[10],
     paddingHorizontal: layout.screenPaddingH,
     backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  analyseRow: {
+    alignItems: 'center',
+    marginBottom: spacing[4] + 2, // 18 — matches design
   },
   transportRow: {
     flexDirection: 'row',
