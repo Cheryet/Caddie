@@ -12,15 +12,14 @@
  * with no visual chrome — it's transparent to Pro users.
  *
  * Spec: PROJECT_SPEC.md §17 — value + crown icon + gold border, "Upgrade
- * to Pro" CTA leading to UpgradeSheet. UpgradeSheet itself lands in a
- * later phase; this component renders the CTA but the press handler is
- * a no-op until that wiring exists (gate mechanism only — Phase 0.8).
+ * to Pro" CTA that opens the UpgradeSheet (Phase 4.5).
  */
 
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSubscription } from '@/features/subscription/hooks/useSubscription';
+import { UpgradeSheet } from '@/features/subscription/components/UpgradeSheet';
 import { colors, layout, spacing, typography } from '@/theme';
 
 interface ProGateProps {
@@ -58,13 +57,10 @@ export function ProGate({ feature, children }: ProGateProps) {
   );
 }
 
-// TODO Phase 1.x — open <UpgradeSheet /> bottom sheet here. Until that
-// component exists the CTA is a deliberate no-op; the gate's job at
-// this phase is mechanism, not purchase flow (PROJECT_SPEC.md §22 0.8).
+// Opens the global paywall (Phase 4.5). The singleton lives outside React
+// so the gate stays a pure presentational primitive — it just triggers.
 function handleUpgradePress(): void {
-  if (__DEV__) {
-    console.warn('[ProGate] UpgradeSheet not yet implemented (Phase 1.x).');
-  }
+  UpgradeSheet.show();
 }
 
 const styles = StyleSheet.create({

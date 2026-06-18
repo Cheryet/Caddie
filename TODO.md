@@ -1189,13 +1189,11 @@ Cache hit renders with no API call; a miss extracts the 8 frames and calls the
 `analyze-swing` Edge Function (Claude key never ships). Full gate green;
 sim build clean + the ProGate state verified on device.
 
-**Pending on-device verification (closes the §4.1 "Claude 200 e2e in 4.4"
-item):** the real cache-hit render with DB data AND the real Claude round-trip
-need a recorded+uploaded swing. The Simulator can't get there — no camera, and
-the report path needs `isPro = true` (a tap the MCP can't drive) plus a real
-analysis costs ~$0.01. Verify on the physical device (same window as the
-pending pose verification): record → "Analyse with AI" → loading → report;
-re-open → cache hit (no second Claude call).
+**✅ Verified on device (2026-06-18) — closes the §4.1 "Claude 200 e2e in
+4.4" item.** Recorded a real swing → "Analyse with AI" → the Edge Function
+returned a 200 with a valid analysis → report rendered; re-opening hit the
+cache (no second Claude call). Flow + logic confirmed working as intended;
+some UI/UX polish on the report is noted for later but doesn't block.
 
 **Deliberate decisions:**
 - **Pro gate = the mandated `<ProGate feature="AI Coaching" />`**, NOT the
@@ -1225,6 +1223,53 @@ re-open → cache hit (no second Claude call).
   (§14 "regenerated only when the user taps refresh"). Add one when wanted.
 - **UpgradeSheet (Phase 4.5)**: the ProGate "Upgrade to Pro" CTA is still the
   Phase-0.8 no-op (warns in `__DEV__`). 4.5 wires RevenueCat `purchasePackage`.
+
+---
+
+## Phase 4.5 — Upgrade flow: wired (sandbox purchase pending device)
+
+**Status:** ✅ Built. RevenueCat client gained `getProPackages` /
+`purchaseProPackage` (user-cancel handled) / `restorePro`; `useUpgrade`
+orchestrates load → purchase/restore → `setIsPro` + dismiss; `UpgradeSheet`
+is a Toast-style global singleton (`UpgradeSheet.show()`) with a host in
+App.tsx; ProGate's "Upgrade to Pro" now opens it. Full gate green; sim build
+clean.
+
+**Pending on-device verification (the §22 4.5 "sandbox purchase works
+end-to-end" exit):** RevenueCat offerings don't load on the Simulator (no
+StoreKit config there — the persistent `[RevenueCat] Error fetching
+offerings` toast), so the sheet shows its "plans unavailable" state on the
+sim. The real purchase path needs a device + a StoreKit/sandbox tester
+account + the `caddie_pro_monthly` / `caddie_pro_annual` products configured
+in App Store Connect AND mapped to the RevenueCat dashboard offering. Verify
+on device: tap a Pro gate → sheet shows the two plans with prices → buy the
+sandbox monthly → `isPro` flips → the gated feature delivers; then Restore on
+a fresh install brings Pro back. (Until products are configured the sheet
+reads "unavailable" even on device.)
+
+**Deliberate decisions:**
+- **Restore lives in the UpgradeSheet** for now. PROJECT_SPEC §22 4.5 also
+  wants a "Restore purchases" entry in SettingsScreen, but that screen is
+  still a Phase-5.4 `Placeholder` — add the Settings entry (and "Manage
+  subscription") when 5.4 builds it. The design's subscription *manage* sheet
+  (switch plan / restore / renewal date, Screens.dc.html ~1540–1607) is also
+  a 5.4 concern.
+- **No design mock for the paywall** — the sheet is built on-brand from §17
+  (crown, gold "Best value" annual, plan rows, restore). UI/UX polish later.
+- **Plan tap purchases immediately** (§17 "Tap plan → purchasePackage()") —
+  no intermediate "Subscribe" button.
+- **`UpgradeSheet`/`useUpgrade` import ui primitives directly** (not the
+  `@/components/ui` barrel) to keep the graph acyclic — the barrel re-exports
+  ProGate, which imports the UpgradeSheet.
+
+**Deferred / future:**
+- **Free-trial / intro-offer copy** ("7-day free trial" in the design) — read
+  it from the RC package's intro price instead of hardcoding, once products
+  carry a trial.
+- **Annual savings %** ("Save 50%") — compute from the two `priceString`s (or
+  RC's relative discount) rather than just the "Best value" tag.
+- **Promo-code redemption** (the design's Profile screen has a redeem row) —
+  RevenueCat offer codes / promo entitlements; not in 4.5.
 
 ---
 

@@ -12,7 +12,7 @@
  * (CLAUDE.md non-negotiable), only the iOS public client key is read.
  */
 
-import Purchases from 'react-native-purchases';
+import Purchases, { type PurchasesPackage } from 'react-native-purchases';
 
 import { env, RC_ENTITLEMENT } from '@/constants/config';
 
@@ -78,6 +78,108 @@ export async function getProEntitlementActive(): Promise<boolean> {
   } catch (err) {
     if (__DEV__) {
       console.warn('[revenuecat] getCustomerInfo failed', err);
+    }
+    return false;
+  }
+}
+
+// ───── Purchase flow (Phase 4.5) ───────────────────────────────────────────
+
+export type SubscriptionPeriod = 'monthly' | 'annual';
+
+export interface ProPackage {
+  period: SubscriptionPeriod;
+  /** Localized store price, e.g. "$9.99" / "£8.99" — display as-is. */
+  priceString: string;
+  /** The raw RevenueCat package — pass straight back to purchaseProPackage. */
+  rcPackage: PurchasesPackage;
+}
+
+export type PurchaseOutcome =
+  | { status: 'success' }
+  | { status: 'cancelled' }
+  | { status: 'error'; message: string };
+
+/**
+ * The monthly + annual Pro packages from the current RevenueCat offering,
+ * with localized prices. Returns [] when the SDK isn't configured (no API
+ * key — the Simulator) or the offering can't be fetched; the UpgradeSheet
+ * renders a "plans unavailable" state rather than crashing.
+ */
+export async function getProPackages(): Promise<ProPackage[]> {
+  const ready = initPromise ? await initPromise : false;
+  if (!ready) return [];
+  try {
+    const { current } = await Purchases.getOfferings();
+    if (!current) return [];
+    const packages: ProPackage[] = [];
+    if (current.monthly) {
+      packages.push({
+        period: 'monthly',
+        priceString: current.monthly.product.priceString,
+        rcPackage: current.monthly,
+      });
+    }
+    if (current.annual) {
+      packages.push({
+        period: 'annual',
+        priceString: current.annual.product.priceString,
+        rcPackage: current.annual,
+      });
+    }
+    return packages;
+  } catch (err) {
+    if (__DEV__) {
+      console.warn('[revenuecat] getOfferings failed', err);
+    }
+    return [];
+  }
+}
+
+/**
+ * Purchase a Pro package. Returns a typed outcome:
+ *   - `success`   — caddie_pro is now active.
+ *   - `cancelled` — the user backed out of the StoreKit sheet (silent, per
+ *                   PROJECT_SPEC §17 — not surfaced as an error).
+ *   - `error`     — anything else, with a user-facing message.
+ * The caller writes `isPro` to the store on success.
+ */
+export async function purchaseProPackage(
+  pkg: PurchasesPackage,
+): Promise<PurchaseOutcome> {
+  try {
+    const { customerInfo } = await Purchases.purchasePackage(pkg);
+    const active = Boolean(
+      customerInfo.entitlements.active[RC_ENTITLEMENT]?.isActive,
+    );
+    return active
+      ? { status: 'success' }
+      : { status: 'error', message: "Purchase didn't activate Pro — try Restore." };
+  } catch (err) {
+    // RevenueCat flags a user-cancelled StoreKit sheet on the thrown error.
+    if ((err as { userCancelled?: boolean })?.userCancelled) {
+      return { status: 'cancelled' };
+    }
+    if (__DEV__) {
+      console.warn('[revenuecat] purchasePackage failed', err);
+    }
+    return { status: 'error', message: 'Purchase failed. Please try again.' };
+  }
+}
+
+/**
+ * Restore prior purchases. Returns whether caddie_pro is active afterwards.
+ * False on any SDK error or when there's nothing to restore.
+ */
+export async function restorePro(): Promise<boolean> {
+  const ready = initPromise ? await initPromise : false;
+  if (!ready) return false;
+  try {
+    const info = await Purchases.restorePurchases();
+    return Boolean(info.entitlements.active[RC_ENTITLEMENT]?.isActive);
+  } catch (err) {
+    if (__DEV__) {
+      console.warn('[revenuecat] restorePurchases failed', err);
     }
     return false;
   }

@@ -45,6 +45,18 @@ jest.mock('react-native-purchases', () => ({
     getCustomerInfo: jest
       .fn()
       .mockResolvedValue({ entitlements: { active: {} } }),
+    // Phase 4.5 purchase flow. Defaults: no current offering, an empty
+    // entitlement set. Tests override per-case with mockResolvedValueOnce.
+    getOfferings: jest.fn().mockResolvedValue({ current: null, all: {} }),
+    purchasePackage: jest
+      .fn()
+      .mockResolvedValue({
+        customerInfo: { entitlements: { active: {} } },
+        productIdentifier: '',
+      }),
+    restorePurchases: jest
+      .fn()
+      .mockResolvedValue({ entitlements: { active: {} } }),
     setLogLevel: jest.fn(),
     LOG_LEVEL: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
   },

@@ -18,8 +18,14 @@ type ClientModule = typeof import('../client');
 type PurchasesMock = {
   configure: jest.Mock;
   getCustomerInfo: jest.Mock;
+  getOfferings: jest.Mock;
+  purchasePackage: jest.Mock;
+  restorePurchases: jest.Mock;
   setLogLevel: jest.Mock;
 };
+
+// Minimal stand-in for a PurchasesPackage — the wrapper only forwards it.
+const FAKE_PKG = {} as Parameters<ClientModule['purchaseProPackage']>[0];
 
 function loadFresh(apiKey: string): {
   client: ClientModule;
@@ -100,5 +106,106 @@ describe('getProEntitlementActive', () => {
 
     await client.initRevenueCat();
     await expect(client.getProEntitlementActive()).resolves.toBe(false);
+  });
+});
+
+describe('getProPackages', () => {
+  it('returns [] when the SDK is uninitialised (no API key)', async () => {
+    const { client, purchases } = loadFresh('');
+
+    await expect(client.getProPackages()).resolves.toEqual([]);
+    expect(purchases.getOfferings).not.toHaveBeenCalled();
+  });
+
+  it('maps the monthly + annual packages with localized prices', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    const monthly = { product: { priceString: '$9.99' } };
+    const annual = { product: { priceString: '$59.99' } };
+    purchases.getOfferings.mockResolvedValueOnce({ current: { monthly, annual } });
+
+    await client.initRevenueCat();
+    const packages = await client.getProPackages();
+
+    expect(packages).toEqual([
+      { period: 'monthly', priceString: '$9.99', rcPackage: monthly },
+      { period: 'annual', priceString: '$59.99', rcPackage: annual },
+    ]);
+  });
+
+  it('returns [] when there is no current offering', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.getOfferings.mockResolvedValueOnce({ current: null });
+
+    await client.initRevenueCat();
+    await expect(client.getProPackages()).resolves.toEqual([]);
+  });
+});
+
+describe('purchaseProPackage', () => {
+  it('returns success when caddie_pro is active after purchase', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.purchasePackage.mockResolvedValueOnce({
+      customerInfo: { entitlements: { active: { [RC_ENTITLEMENT]: { isActive: true } } } },
+    });
+
+    await expect(client.purchaseProPackage(FAKE_PKG)).resolves.toEqual({
+      status: 'success',
+    });
+  });
+
+  it('returns cancelled when the user backs out', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.purchasePackage.mockRejectedValueOnce({ userCancelled: true });
+
+    await expect(client.purchaseProPackage(FAKE_PKG)).resolves.toEqual({
+      status: 'cancelled',
+    });
+  });
+
+  it('returns error on any other failure', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.purchasePackage.mockRejectedValueOnce(new Error('declined'));
+
+    const outcome = await client.purchaseProPackage(FAKE_PKG);
+    expect(outcome.status).toBe('error');
+  });
+
+  it('returns error when the purchase did not activate Pro', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.purchasePackage.mockResolvedValueOnce({
+      customerInfo: { entitlements: { active: {} } },
+    });
+
+    const outcome = await client.purchaseProPackage(FAKE_PKG);
+    expect(outcome.status).toBe('error');
+  });
+});
+
+describe('restorePro', () => {
+  it('returns false when the SDK is uninitialised', async () => {
+    const { client, purchases } = loadFresh('');
+
+    await expect(client.restorePro()).resolves.toBe(false);
+    expect(purchases.restorePurchases).not.toHaveBeenCalled();
+  });
+
+  it('returns true when caddie_pro is active after restore', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.restorePurchases.mockResolvedValueOnce({
+      entitlements: { active: { [RC_ENTITLEMENT]: { isActive: true } } },
+    });
+
+    await client.initRevenueCat();
+    await expect(client.restorePro()).resolves.toBe(true);
+  });
+
+  it('returns false when there is nothing to restore', async () => {
+    const { client, purchases } = loadFresh('appl_FAKE_KEY');
+    purchases.restorePurchases.mockResolvedValueOnce({
+      entitlements: { active: {} },
+    });
+
+    await client.initRevenueCat();
+    await expect(client.restorePro()).resolves.toBe(false);
   });
 });

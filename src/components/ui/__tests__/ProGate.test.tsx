@@ -3,18 +3,26 @@
  * Verifies the gate switches on `isPro` from the Zustand store:
  *   - isPro=true  → renders children transparently
  *   - isPro=false → renders the upgrade card (no children visible)
- *
- * The Upgrade CTA's onPress is a no-op at this phase; not tested.
+ *   - the "Upgrade to Pro" CTA opens the global UpgradeSheet (Phase 4.5)
  */
 
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { useAppStore } from '@/store/useAppStore';
 
 import { ProGate } from '../ProGate';
+import { UpgradeSheet } from '@/features/subscription/components/UpgradeSheet';
+
+// Stub the paywall singleton so we assert the trigger without mounting it.
+jest.mock('@/features/subscription/components/UpgradeSheet', () => ({
+  UpgradeSheet: { show: jest.fn(), hide: jest.fn() },
+}));
+
+const mockShow = UpgradeSheet.show as jest.Mock;
 
 beforeEach(() => {
+  mockShow.mockClear();
   useAppStore.setState({
     user: null,
     isAuthLoading: false,
@@ -58,5 +66,14 @@ describe('ProGate', () => {
 
     expect(queryByText('Analysis')).not.toBeNull();
     expect(queryByText('Upgrade to Pro')).not.toBeNull();
+  });
+
+  it('opens the UpgradeSheet when the CTA is tapped', () => {
+    useAppStore.setState({ isPro: false });
+
+    const { getByText } = render(<ProGate feature="AI Coaching" />);
+    fireEvent.press(getByText('Upgrade to Pro'));
+
+    expect(mockShow).toHaveBeenCalledTimes(1);
   });
 });
