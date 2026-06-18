@@ -11,7 +11,6 @@ import type { AppTabsScreenProps } from '@/navigation/types';
 import { useAppStore } from '@/store/useAppStore';
 
 const DEMO_VIDEO_ID = 'demo-video';
-const DEMO_VIDEO_ID_B = 'demo-video-b';
 
 export function HomeScreen({ navigation }: AppTabsScreenProps<'HomeTab'>) {
   const user = useAppStore(s => s.user);
@@ -56,11 +55,7 @@ export function HomeScreen({ navigation }: AppTabsScreenProps<'HomeTab'>) {
         },
         {
           label: 'Open Comparison (modal)',
-          onPress: () =>
-            navigation.navigate('Comparison', {
-              videoIdA: DEMO_VIDEO_ID,
-              videoIdB: DEMO_VIDEO_ID_B,
-            }),
+          onPress: () => navigation.navigate('Comparison'),
         },
       ]}
     />

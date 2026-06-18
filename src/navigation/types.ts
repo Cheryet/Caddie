@@ -70,7 +70,9 @@ export type RootStackParamList = {
   Camera: undefined;
   Playback: PlaybackParams;
   Analysis: { videoId: string };
-  Comparison: { videoIdA: string; videoIdB: string };
+  // Both optional — Comparison can be entered empty (pick both swings on
+  // the screen) or pre-seeded with one/both (Phase 5.1).
+  Comparison: { videoIdA?: string; videoIdB?: string } | undefined;
 };
 
 // ───── Screen prop helpers ─────
