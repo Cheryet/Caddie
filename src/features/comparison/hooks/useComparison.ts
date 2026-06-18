@@ -4,6 +4,12 @@
  * state (which slot is being chosen), holds a <VideoPlayer> ref per panel,
  * and composes useComparePanel ×2 (wiring each panel's seek to its ref).
  *
+ * Sync (5.1b): once both panels have an impact frame marked, Sync couples the
+ * two timelines by their impact offset — scrubbing one drives the other to the
+ * same point relative to impact, and play/pause is shared. Each panel keeps
+ * its own speed (per the Design note), so simultaneous play at differing
+ * speeds can drift after impact; at the shared 0.5× default they stay aligned.
+ *
  * The session is ephemeral — slot ids live only in local state (PROJECT_SPEC
  * §22 5.1 "Sessions ephemeral"). Optionally seeded from the route so a future
  * "Compare with…" entry can pre-fill a side.
@@ -11,7 +17,7 @@
  * Used by: ComparisonScreen.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { VideoPlayerHandle } from '@/features/playback/components/VideoPlayer';
 import { useComparePanel } from '@/features/comparison/hooks/useComparePanel';
@@ -37,6 +43,12 @@ export interface UseComparisonReturn {
   closePicker: () => void;
   /** Fill the slot whose picker is open, then close it. */
   chooseVideo: (videoId: string) => void;
+  // ── Sync (5.1b) ──
+  /** Whether the two timelines are locked to their impact frames. */
+  syncOn: boolean;
+  /** Both panels have an impact marked — Sync can be turned on. */
+  canSync: boolean;
+  toggleSync: () => void;
 }
 
 export function useComparison({
@@ -77,14 +89,81 @@ export function useComparison({
     [pickerOpenFor],
   );
 
+  // ─── Sync ──────────────────────────────────────────────────────────────
+  const [syncOn, setSyncOn] = useState(false);
+  const canSync = panelA.impactMs !== null && panelB.impactMs !== null;
+
+  // Drop sync if a panel loses its impact (e.g. its video was swapped).
+  useEffect(() => {
+    if (syncOn && !canSync) setSyncOn(false);
+  }, [syncOn, canSync]);
+
+  const toggleSync = useCallback(() => {
+    if (syncOn) {
+      setSyncOn(false);
+      return;
+    }
+    if (panelA.impactMs === null || panelB.impactMs === null) return;
+    // Lock B onto A at the impact offset so they start aligned.
+    panelB.seekMs(panelA.currentMs + (panelB.impactMs - panelA.impactMs));
+    setSyncOn(true);
+  }, [syncOn, panelA, panelB]);
+
+  // When synced, scrubbing one panel drives the other to the same point
+  // relative to impact; the follower's own seekMs clamps to its duration.
+  const seekSlot = (slot: CompareSlot, ms: number) => {
+    if (slot === 'A') {
+      panelA.seekMs(ms);
+      if (syncOn && panelA.impactMs !== null && panelB.impactMs !== null) {
+        panelB.seekMs(ms + (panelB.impactMs - panelA.impactMs));
+      }
+    } else {
+      panelB.seekMs(ms);
+      if (syncOn && panelA.impactMs !== null && panelB.impactMs !== null) {
+        panelA.seekMs(ms + (panelA.impactMs - panelB.impactMs));
+      }
+    }
+  };
+
+  // When synced, play/pause is shared; otherwise each panel toggles itself.
+  const toggleSlot = (slot: CompareSlot) => {
+    if (!syncOn) {
+      (slot === 'A' ? panelA : panelB).toggle();
+      return;
+    }
+    const next = !(slot === 'A' ? panelA.isPlaying : panelB.isPlaying);
+    if (next) {
+      panelA.play();
+      panelB.play();
+    } else {
+      panelA.pause();
+      panelB.pause();
+    }
+  };
+
+  // Override only seek + toggle so ComparePanel's existing wiring is untouched.
+  const composedA: ComparePanelState = {
+    ...panelA,
+    seekMs: ms => seekSlot('A', ms),
+    toggle: () => toggleSlot('A'),
+  };
+  const composedB: ComparePanelState = {
+    ...panelB,
+    seekMs: ms => seekSlot('B', ms),
+    toggle: () => toggleSlot('B'),
+  };
+
   return {
-    panelA,
-    panelB,
+    panelA: composedA,
+    panelB: composedB,
     playerRefA,
     playerRefB,
     pickerOpenFor,
     openPicker,
     closePicker,
     chooseVideo,
+    syncOn,
+    canSync,
+    toggleSync,
   };
 }

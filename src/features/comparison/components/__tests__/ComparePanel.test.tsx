@@ -33,6 +33,12 @@ jest.mock('@react-native-community/slider', () => {
   };
 });
 
+jest.mock('@/features/pose/components/PoseOverlay', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return { PoseOverlay: () => React.createElement(View, { testID: 'pose-stub' }) };
+});
+
 function makePanel(overrides: Partial<ComparePanelState> = {}): ComparePanelState {
   return {
     videoId: 'v1',
@@ -51,6 +57,14 @@ function makePanel(overrides: Partial<ComparePanelState> = {}): ComparePanelStat
     setProgress: jest.fn(),
     setDuration: jest.fn(),
     onEnd: jest.fn(),
+    impactMs: null,
+    markImpact: jest.fn(),
+    poseAvailable: false,
+    poseEnabled: false,
+    togglePose: jest.fn(),
+    poseFrame: null,
+    poseTrackStatus: 'idle',
+    poseElapsedSec: 0,
     ...overrides,
   };
 }
@@ -105,5 +119,45 @@ describe('ComparePanel', () => {
     );
     fireEvent.press(getByText('Driver · Today'));
     expect(onPick).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks impact when the Impact button is tapped', () => {
+    const panel = makePanel();
+    const { getByLabelText } = render(
+      <ComparePanel panel={panel} playerRef={null} onPick={jest.fn()} placeholder="Swing A" />,
+    );
+    fireEvent.press(getByLabelText('Mark impact frame'));
+    expect(panel.markImpact).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the amber impact tick only when impact is marked', () => {
+    const { queryByTestId } = render(
+      <ComparePanel panel={makePanel()} playerRef={null} onPick={jest.fn()} placeholder="Swing A" />,
+    );
+    expect(queryByTestId('impact-tick')).toBeNull();
+
+    const { getByTestId } = render(
+      <ComparePanel
+        panel={makePanel({ impactMs: 2000 })}
+        playerRef={null}
+        onPick={jest.fn()}
+        placeholder="Swing A"
+      />,
+    );
+    expect(getByTestId('impact-tick')).toBeTruthy();
+  });
+
+  it('renders the pose toggle only when the engine is available', () => {
+    const off = render(
+      <ComparePanel panel={makePanel()} playerRef={null} onPick={jest.fn()} placeholder="Swing A" />,
+    );
+    expect(off.queryByLabelText('Toggle pose overlay')).toBeNull();
+
+    const panel = makePanel({ poseAvailable: true });
+    const on = render(
+      <ComparePanel panel={panel} playerRef={null} onPick={jest.fn()} placeholder="Swing A" />,
+    );
+    fireEvent.press(on.getByLabelText('Toggle pose overlay'));
+    expect(panel.togglePose).toHaveBeenCalledTimes(1);
   });
 });

@@ -36,6 +36,9 @@ export function ComparisonScreen({
     openPicker,
     closePicker,
     chooseVideo,
+    syncOn,
+    canSync,
+    toggleSync,
   } = useComparison({
     initialVideoIdA: route.params?.videoIdA,
     initialVideoIdB: route.params?.videoIdB,
@@ -77,6 +80,9 @@ export function ComparisonScreen({
         playerRefB={playerRefB}
         onPickA={handlePickA}
         onPickB={handlePickB}
+        syncOn={syncOn}
+        canSync={canSync}
+        onToggleSync={toggleSync}
       />
 
       <ComparisonPickerSheet

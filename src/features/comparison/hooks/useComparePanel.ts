@@ -20,6 +20,8 @@ import { z } from 'zod';
 
 import { supabase } from '@/core/supabase/client';
 import { getSignedVideoUrl } from '@/core/supabase/storage';
+import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
+import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { formatRelativeDate } from '@/utils/relativeTime';
 import type {
   CompareRate,
@@ -63,6 +65,17 @@ export function useComparePanel({
   const [durationMs, setDurationMs] = useState(0);
   const [rate, setRateState] = useState<CompareRate>(0.5);
 
+  // Impact frame (5.1b): null until the user marks it. Sync aligns the two
+  // timelines to each panel's impact.
+  const [impactMs, setImpactMs] = useState<number | null>(null);
+
+  // Per-panel pose overlay (5.1b): off by default; the whole clip's pose is
+  // pre-computed once when enabled (usePoseTrack) so the skeleton animates via
+  // an instant frameAt() lookup. Mirrors PlaybackScreen's wiring.
+  const [poseEnabled, setPoseEnabled] = useState(false);
+  const { status: engineStatus } = usePoseStatus();
+  const poseTrack = usePoseTrack({ uri, enabled: poseEnabled });
+
   const aliveRef = useRef(true);
   useEffect(() => {
     aliveRef.current = true;
@@ -79,6 +92,8 @@ export function useComparePanel({
     setIsPlaying(false);
     setCurrentMs(0);
     setDurationMs(0);
+    setImpactMs(null);
+    setPoseEnabled(false);
 
     if (!videoId) {
       setStatus('empty');
@@ -144,6 +159,14 @@ export function useComparePanel({
     onSeek(0);
   }, [onSeek]);
 
+  // Mark the current frame as impact. Only meaningful once the clip is
+  // loaded; ignored otherwise so an unresolved slot can't pin impact at 0.
+  const markImpact = useCallback(() => {
+    if (status === 'ready') setImpactMs(currentMs);
+  }, [status, currentMs]);
+
+  const togglePose = useCallback(() => setPoseEnabled(prev => !prev), []);
+
   return {
     videoId,
     status,
@@ -161,5 +184,13 @@ export function useComparePanel({
     setProgress,
     setDuration,
     onEnd,
+    impactMs,
+    markImpact,
+    poseAvailable: engineStatus === 'ready',
+    poseEnabled,
+    togglePose,
+    poseFrame: poseTrack.frameAt(currentMs),
+    poseTrackStatus: poseTrack.status,
+    poseElapsedSec: poseTrack.elapsedSec,
   };
 }

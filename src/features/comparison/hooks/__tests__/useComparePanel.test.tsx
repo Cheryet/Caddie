@@ -10,6 +10,15 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useComparePanel } from '../useComparePanel';
 import { getSignedVideoUrl } from '@/core/supabase/storage';
 
+// Isolate from the pose engine — keeps the hook's own state under test and
+// guarantees no native precompute fires when pose is toggled.
+jest.mock('@/features/pose/hooks/usePoseStatus', () => ({
+  usePoseStatus: () => ({ status: 'idle', error: null }),
+}));
+jest.mock('@/features/pose/hooks/usePoseTrack', () => ({
+  usePoseTrack: () => ({ status: 'idle', frameAt: () => null, elapsedSec: 0 }),
+}));
+
 interface RowResult {
   data: unknown;
   error: unknown;
@@ -124,5 +133,56 @@ describe('useComparePanel', () => {
     expect(result.current.rate).toBe(0.5);
     act(() => result.current.setRate(1));
     expect(result.current.rate).toBe(1);
+  });
+
+  it('marks the current frame as impact once ready', async () => {
+    const { result } = renderHook(() =>
+      useComparePanel({ videoId: 'v1', onSeek: jest.fn() }),
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.impactMs).toBeNull();
+
+    act(() => result.current.setDuration(5000));
+    act(() => result.current.seekMs(2000));
+    act(() => result.current.markImpact());
+
+    expect(result.current.impactMs).toBe(2000);
+  });
+
+  it('ignores markImpact until the clip is ready', () => {
+    const { result } = renderHook(() =>
+      useComparePanel({ videoId: null, onSeek: jest.fn() }),
+    );
+    act(() => result.current.markImpact());
+    expect(result.current.impactMs).toBeNull();
+  });
+
+  it('resets impact + pose when the slot video changes', async () => {
+    const { result, rerender } = renderHook(
+      ({ videoId }: { videoId: string | null }) =>
+        useComparePanel({ videoId, onSeek: jest.fn() }),
+      { initialProps: { videoId: 'v1' as string | null } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    act(() => result.current.markImpact());
+    act(() => result.current.togglePose());
+    expect(result.current.impactMs).toBe(0);
+    expect(result.current.poseEnabled).toBe(true);
+
+    mockState.row = { data: ROW, error: null };
+    rerender({ videoId: 'v2' });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.impactMs).toBeNull();
+    expect(result.current.poseEnabled).toBe(false);
+  });
+
+  it('toggles the pose overlay', async () => {
+    const { result } = renderHook(() =>
+      useComparePanel({ videoId: 'v1', onSeek: jest.fn() }),
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.poseEnabled).toBe(false);
+    act(() => result.current.togglePose());
+    expect(result.current.poseEnabled).toBe(true);
   });
 });

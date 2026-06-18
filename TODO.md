@@ -1273,6 +1273,54 @@ reads "unavailable" even on device.)
 
 ---
 
+## Phase 5.1 — Side-by-side comparison
+
+**Status:** ✅ 5.1a (pick two swings + independent playback/scrub/speed) and
+✅ 5.1b (Sync strip/toggle, per-panel mark-impact + amber scrub tick,
+sync-coupled offset-aligned scrub + shared transport, per-panel pose overlay)
+shipped. Full gate green (tsc / eslint / 509 jest); sim build + launch clean.
+
+**Sync semantics — Option A (the Design note's reading).** Once both panels
+have an impact marked, Sync couples the two timelines by their impact offset:
+scrubbing one drives the other to the same point relative to impact, and
+play/pause is shared. **Each panel keeps its own speed** (Screens.dc.html §05:
+*"Each video keeps its own speed … Sync locks the two timelines to that
+frame"*), implemented by overriding only `seekMs` + `toggle` on the composed
+panels in `useComparison` (ComparePanel's wiring is untouched). Consequence:
+simultaneous play at *different* speeds drifts after impact — expected; at the
+shared 0.5× default they stay aligned. If lockstep playback is ever wanted,
+make Sync also share the rate (override `setRate`) so both run at one speed.
+
+**Per-panel control placement (not in the static design).** The prototype
+draws neither a per-video pose toggle nor a mark-impact control, but §5 +
+§22 5.1 require "pose overlay per video" and the brief requires per-panel
+mark-impact. Added as a top-right floating-glass-pill cluster mirroring the
+top-left label pill: Pose (only when the engine is `ready`) + Impact (amber
+flag when set). Revisit if a future design pass specifies these.
+
+**Deferred:**
+- **5.1c — landscape side-by-side** (Design's *primary* layout; portrait is
+  the documented fallback). Needs orientation handling + the center-divider
+  impact line. Fast-follow.
+- **Header overflow "…" menu** (portrait design, top-right) — swap sides /
+  reset / etc. The right header slot is intentionally an empty spacer for now;
+  no dead button rendered.
+- **Sync-green label token.** The Design's brighter on-state green (#6DC98A,
+  currently inlined in `Badge.tsx`'s success variant) should be promoted to a
+  theme token and used for the SyncStrip's on-label + icon; today they reuse
+  `semantic.success` (#4A9B6F), one shade darker than the mock.
+- **Impact tick vs. slider thumb inset.** The amber tick is positioned by a
+  simple `left: fraction%` over the community Slider, which insets its track
+  by ~half the thumb — so the tick is a hair off near the very ends (fine
+  mid-swing, where impact lives). Tighten if it ever reads wrong.
+
+**Pose is device-only to verify visually** — the Simulator can't run Apple
+Vision body-pose, so the per-panel skeleton + "Analyzing pose…" indicator are
+confirmed on a physical device (see the device-verification item up top). The
+toggle correctly stays hidden on the sim (engine never reports `ready`).
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:
