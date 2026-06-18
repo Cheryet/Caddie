@@ -10,7 +10,7 @@ import { render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisContent } from '../AnalysisContent';
-import { MOCK_ANALYSIS, MOCK_SUBTITLE } from '../../mockAnalysis';
+import { MOCK_ANALYSIS, MOCK_SUBTITLE } from '../../__fixtures__/analysis';
 
 // Wrap with metrics so the provider renders children (a bare provider
 // renders nothing until measured).

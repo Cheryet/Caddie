@@ -1,23 +1,71 @@
 /**
  * AnalysisScreen — Screen tests
- * Drives the three states through the __DEV__ switcher (enabled under jest's
- * __DEV__) and verifies the header back action. Mock data is the screen's own
- * source in Phase 4.3, so no hook/network mocking is needed.
+ * useAnalysis + useSubscription are mocked at the module boundary so we can
+ * drive the Pro gate and each analysis state without the data layer. Asserts
+ * the gate for free users, the report for Pro users, the loading/error
+ * branches, and the header back action.
  */
 
 import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisScreen } from '../AnalysisScreen';
-import { MOCK_ANALYSIS } from '../../mockAnalysis';
+import { MOCK_ANALYSIS } from '../../__fixtures__/analysis';
+import type { AnalysisError } from '../../parseAnalysis';
+import type { AnalysisStatus } from '../../hooks/useAnalysis';
+import type { SwingAnalysis } from '@/types/analysis';
 import type { RootStackScreenProps } from '@/navigation/types';
+
+interface AnalysisHookState {
+  status: AnalysisStatus;
+  analysis: SwingAnalysis | null;
+  subtitle: string | null;
+  error: AnalysisError | null;
+  refresh: jest.Mock;
+}
+
+jest.mock('@/features/analysis/hooks/useAnalysis', () => {
+  const { MOCK_ANALYSIS: analysis } = require('../../__fixtures__/analysis');
+  const state: AnalysisHookState = {
+    status: 'ready',
+    analysis,
+    subtitle: 'Driver · Today',
+    error: null,
+    refresh: jest.fn(),
+  };
+  return { useAnalysis: () => state, __state: state };
+});
+
+jest.mock('@/features/subscription/hooks/useSubscription', () => {
+  const state = { isPro: true };
+  return { useSubscription: () => state, __state: state };
+});
+
+const hookState = (
+  jest.requireMock('@/features/analysis/hooks/useAnalysis') as {
+    __state: AnalysisHookState;
+  }
+).__state;
+const subState = (
+  jest.requireMock('@/features/subscription/hooks/useSubscription') as {
+    __state: { isPro: boolean };
+  }
+).__state;
+
+beforeEach(() => {
+  hookState.status = 'ready';
+  hookState.analysis = MOCK_ANALYSIS;
+  hookState.subtitle = 'Driver · Today';
+  hookState.error = null;
+  hookState.refresh = jest.fn();
+  subState.isPro = true;
+});
 
 function renderScreen() {
   const goBack = jest.fn();
-  // Minimal nav/route mock — the screen only calls navigation.goBack.
   const props = {
     navigation: { goBack },
-    route: { params: { videoId: 'v1' } },
+    route: { params: { videoId: 'video-1' } },
   } as unknown as RootStackScreenProps<'Analysis'>;
   const view = render(
     <SafeAreaProvider
@@ -32,24 +80,53 @@ function renderScreen() {
 }
 
 describe('AnalysisScreen', () => {
-  it('renders the ready report by default', () => {
+  it('shows the Pro gate for free users', () => {
+    subState.isPro = false;
+    const { getByText, queryByText } = renderScreen();
+    expect(getByText('AI Coaching')).toBeTruthy();
+    expect(getByText('Upgrade to Pro')).toBeTruthy();
+    // The report must not render for free users.
+    expect(queryByText('78')).toBeNull();
+  });
+
+  it('renders the report for Pro users when ready', () => {
     const { getByText } = renderScreen();
     expect(getByText('Swing analysis')).toBeTruthy();
     expect(getByText('78')).toBeTruthy();
     expect(getByText(MOCK_ANALYSIS.issues[0]!.name)).toBeTruthy();
   });
 
-  it('switches to the loading state via the dev switcher', () => {
+  it('renders the loading state while analysing', () => {
+    hookState.status = 'analyzing';
+    hookState.analysis = null;
     const { getByText } = renderScreen();
-    fireEvent.press(getByText('loading'));
     expect(getByText('Analysing your swing')).toBeTruthy();
   });
 
-  it('switches to the error state via the dev switcher', () => {
+  it('renders a retryable error with a Try again CTA', () => {
+    hookState.status = 'error';
+    hookState.analysis = null;
+    hookState.error = {
+      code: 'network',
+      message: 'Analysis timed out. Check your connection and try again.',
+      retryable: true,
+    };
     const { getByText } = renderScreen();
-    fireEvent.press(getByText('error'));
-    expect(getByText("Analysis didn't go through")).toBeTruthy();
+    expect(getByText('Connection problem')).toBeTruthy();
     expect(getByText('Try again')).toBeTruthy();
+  });
+
+  it('omits Try again for the daily-limit error', () => {
+    hookState.status = 'error';
+    hookState.analysis = null;
+    hookState.error = {
+      code: 'rate_limited',
+      message: "You've used all 10 analyses for today. Come back tomorrow.",
+      retryable: false,
+    };
+    const { getByText, queryByText } = renderScreen();
+    expect(getByText('Daily limit reached')).toBeTruthy();
+    expect(queryByText('Try again')).toBeNull();
   });
 
   it('closes via the header back button', () => {
