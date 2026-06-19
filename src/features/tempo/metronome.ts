@@ -87,8 +87,12 @@ export function createMetronome(): Metronome {
   function start(bpm: number): void {
     configureSession();
     const context = ensureContext();
+    // Activate the session, then let the first scheduled oscillator start the
+    // engine. We deliberately do NOT call context.resume(): in audio-api 0.12
+    // resume() starts the AVAudioEngine on a worker thread while osc.start()
+    // starts it on the JS thread, and the two race inside the unsynchronised
+    // source-node map (materializeSourceNodeWithId) → SIGSEGV. One start path.
     AudioManager.setAudioSessionActivity(true).catch(() => {});
-    context.resume().catch(() => {});
     secondsPerBeat = 60 / bpm;
     nextNoteTime = context.currentTime + FIRST_BEAT_OFFSET_S;
     if (timer) clearInterval(timer);
