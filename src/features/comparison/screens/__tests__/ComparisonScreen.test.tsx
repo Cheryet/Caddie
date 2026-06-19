@@ -15,6 +15,16 @@ import type { RootStackScreenProps } from '@/navigation/types';
 // which throws at import without env. Stub it (the picker stays closed here).
 jest.mock('@/core/supabase/client', () => ({ supabase: {} }));
 
+// useFocusEffect needs a navigation container; run the callback once so the
+// orientation unlock/lock (no-ops via the jest.setup native mock) is exercised.
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    // The screen's callback is useCallback-stable, so [cb] runs it once.
+    const { useEffect } = require('react');
+    useEffect(() => cb(), [cb]);
+  },
+}));
+
 interface ComparisonMockState {
   pickerOpenFor: 'A' | 'B' | null;
   openPicker: jest.Mock;
@@ -94,7 +104,16 @@ function renderScreen() {
   return { ...view, goBack };
 }
 
+// Drive orientation via the window dimensions the screen reads. Default
+// portrait; the landscape test overrides before rendering.
+function setDimensions(width: number, height: number) {
+  (
+    jest.spyOn(require('react-native'), 'useWindowDimensions') as jest.Mock
+  ).mockReturnValue({ width, height, scale: 3, fontScale: 1 });
+}
+
 beforeEach(() => {
+  setDimensions(393, 852);
   cmpState.pickerOpenFor = null;
   cmpState.openPicker = jest.fn();
   cmpState.closePicker = jest.fn();
@@ -121,5 +140,16 @@ describe('ComparisonScreen', () => {
     fireEvent.press(getByLabelText('Pick Swing B'));
     expect(cmpState.openPicker).toHaveBeenCalledWith('A');
     expect(cmpState.openPicker).toHaveBeenCalledWith('B');
+  });
+
+  it('drops the title header and shows a floating back in landscape', () => {
+    setDimensions(852, 393);
+    const { queryByText, getByLabelText, goBack } = renderScreen();
+    // No portrait title bar in landscape…
+    expect(queryByText('Compare')).toBeNull();
+    // …but both slots + a (floating) close affordance remain.
+    expect(getByLabelText('Pick Swing A')).toBeTruthy();
+    fireEvent.press(getByLabelText('Close comparison'));
+    expect(goBack).toHaveBeenCalledTimes(1);
   });
 });

@@ -31,6 +31,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     return true
   }
+
+  // react-native-orientation-locker: the OS asks the app delegate which
+  // orientations a window may use. `Orientation.getOrientation()` returns the
+  // mask the JS layer last locked to — portrait app-wide, unlocked only on the
+  // Comparison screen (Phase 5.1c). Without this hook the JS locks are ignored.
+  func application(
+    _ application: UIApplication,
+    supportedInterfaceOrientationsFor window: UIWindow?
+  ) -> UIInterfaceOrientationMask {
+    return Orientation.getOrientation()
+  }
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {

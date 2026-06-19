@@ -12,6 +12,7 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { OrientationBootstrap } from '@/components/OrientationBootstrap';
 import { ToastHost } from '@/components/ui';
 import { AuthBootstrap } from '@/features/auth/components/AuthBootstrap';
 import { PoseBootstrap } from '@/features/pose/components/PoseBootstrap';
@@ -25,6 +26,7 @@ function App() {
     <GestureHandlerRootView style={rootStyle}>
       <SafeAreaProvider>
         <StatusBar barStyle="light-content" />
+        <OrientationBootstrap />
         <AuthBootstrap />
         <RevenueCatBootstrap />
         <UploadQueueBootstrap />

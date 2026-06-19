@@ -273,3 +273,16 @@ jest.mock('react-native-vision-camera', () => {
     })),
   };
 });
+
+// react-native-orientation-locker is a native module; stub the lock/unlock
+// surface our core/orientation wrapper calls so it's a no-op under jest.
+jest.mock('react-native-orientation-locker', () => ({
+  __esModule: true,
+  default: {
+    lockToPortrait: jest.fn(),
+    unlockAllOrientations: jest.fn(),
+    lockToLandscape: jest.fn(),
+    addOrientationListener: jest.fn(),
+    removeOrientationListener: jest.fn(),
+  },
+}));

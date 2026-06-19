@@ -42,9 +42,21 @@ interface ComparePanelProps {
   onPick: () => void;
   /** Shown on the empty slot, e.g. "Swing A". */
   placeholder: string;
+  /** Landscape side-by-side (5.1c): centers the label pill per Design §05. */
+  landscape?: boolean;
+  /** Which corner the pose/impact cluster hugs. Landscape uses outer corners
+   *  (A→left, B→right) so neither collides with the center floating Sync. */
+  clusterSide?: 'left' | 'right';
 }
 
-export function ComparePanel({ panel, playerRef, onPick, placeholder }: ComparePanelProps) {
+export function ComparePanel({
+  panel,
+  playerRef,
+  onPick,
+  placeholder,
+  landscape = false,
+  clusterSide = 'right',
+}: ComparePanelProps) {
   // Pixel size of the panel — the PoseOverlay needs it to letterbox the
   // skeleton into the video rect (there's no DrawingCanvas here to measure it).
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -114,17 +126,26 @@ export function ComparePanel({ panel, playerRef, onPick, placeholder }: CompareP
         </View>
       ) : null}
 
-      {/* Label pill (tap to change the video) */}
-      <Pressable style={styles.labelPill} onPress={onPick} hitSlop={6}>
-        <View style={styles.labelDot} />
-        <Text style={styles.labelText} numberOfLines={1}>
-          {panel.label}
-        </Text>
-      </Pressable>
+      {/* Label pill (tap to change the video). Top-left in portrait,
+          top-center in landscape (Design §05). */}
+      <View
+        style={[styles.labelSlot, landscape && styles.labelSlotCenter]}
+        pointerEvents="box-none">
+        <Pressable style={styles.labelPill} onPress={onPick} hitSlop={6}>
+          <View style={styles.labelDot} />
+          <Text style={styles.labelText} numberOfLines={1}>
+            {panel.label}
+          </Text>
+        </Pressable>
+      </View>
 
       {/* Top-right control cluster — pose (when the engine is ready) +
           mark-impact. Mirrors the floating-glass-pill language of the label. */}
-      <View style={styles.cluster}>
+      <View
+        style={[
+          styles.cluster,
+          clusterSide === 'left' ? styles.clusterLeft : styles.clusterRight,
+        ]}>
         {panel.poseAvailable ? (
           <Pressable
             style={styles.ctrlPill}
@@ -361,10 +382,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  labelPill: {
+  labelSlot: {
     position: 'absolute',
     top: spacing[3],
     left: spacing[3],
+    right: spacing[3],
+    alignItems: 'flex-start',
+  },
+  labelSlotCenter: {
+    alignItems: 'center',
+  },
+  labelPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
@@ -390,9 +418,14 @@ const styles = StyleSheet.create({
   cluster: {
     position: 'absolute',
     top: spacing[3],
-    right: spacing[3],
     flexDirection: 'row',
     gap: spacing[2],
+  },
+  clusterRight: {
+    right: spacing[3],
+  },
+  clusterLeft: {
+    left: spacing[3],
   },
   ctrlPill: {
     flexDirection: 'row',

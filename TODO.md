@@ -1275,10 +1275,11 @@ reads "unavailable" even on device.)
 
 ## Phase 5.1 — Side-by-side comparison
 
-**Status:** ✅ 5.1a (pick two swings + independent playback/scrub/speed) and
+**Status:** ✅ 5.1a (pick two swings + independent playback/scrub/speed),
 ✅ 5.1b (Sync strip/toggle, per-panel mark-impact + amber scrub tick,
-sync-coupled offset-aligned scrub + shared transport, per-panel pose overlay)
-shipped. Full gate green (tsc / eslint / 509 jest); sim build + launch clean.
+sync-coupled offset-aligned scrub + shared transport, per-panel pose overlay),
+and ✅ 5.1c (landscape side-by-side via auto-rotation) shipped. Full gate green
+(tsc / eslint / 517 jest); sim native build + launch clean.
 
 **Sync semantics — Option A (the Design note's reading).** Once both panels
 have an impact marked, Sync couples the two timelines by their impact offset:
@@ -1298,17 +1299,41 @@ mark-impact. Added as a top-right floating-glass-pill cluster mirroring the
 top-left label pill: Pose (only when the engine is `ready`) + Impact (amber
 flag when set). Revisit if a future design pass specifies these.
 
+**Landscape — auto-rotation (5.1c).** The app is portrait-first; only the
+Comparison screen opts into landscape (the Design's *primary* layout). Chosen
+mechanism: `react-native-orientation-locker` (the lighter path — it ships the
+JS bridge + the `Orientation` class, so the only native glue we own is one
+AppDelegate hook). Wiring:
+- `react-native-orientation-locker@1.7.0` added; isolated behind
+  `src/core/orientation` (mirrors how core/pose hides caddie-pose).
+- Info.plist: iPhone `UISupportedInterfaceOrientations` now lists portrait +
+  landscape L/R (the superset; the AppDelegate narrows it per-window).
+- `AppDelegate.swift` implements `supportedInterfaceOrientationsFor` →
+  `Orientation.getOrientation()`; reachable from Swift via a new
+  `Caddie-Bridging-Header.h` (`SWIFT_OBJC_BRIDGING_HEADER` set in pbxproj for
+  Debug + Release).
+- `OrientationBootstrap` locks portrait at launch; `ComparisonScreen`
+  `useFocusEffect` unlocks on focus / re-locks on blur.
+- Layout is responsive via `useWindowDimensions` (no separate route):
+  `ComparisonPlayer` renders the portrait stack (Sync strip) or the landscape
+  row (faint amber center axis + floating Sync pill); `SyncToggle` is shared
+  (variants `strip`/`floating`); panels move their control cluster to the
+  outer corners in landscape so neither collides with the center Sync.
+- *Verified:* native build + launch clean on RN 0.86 / new arch (legacy module
+  works through the interop layer). Rotating the sim to see side-by-side is a
+  manual visual check (no rotate tool in this env) — handed to the user.
+
 **Deferred:**
-- **5.1c — landscape side-by-side** (Design's *primary* layout; portrait is
-  the documented fallback). Needs orientation handling + the center-divider
-  impact line. Fast-follow.
 - **Header overflow "…" menu** (portrait design, top-right) — swap sides /
   reset / etc. The right header slot is intentionally an empty spacer for now;
   no dead button rendered.
-- **Sync-green label token.** The Design's brighter on-state green (#6DC98A,
-  currently inlined in `Badge.tsx`'s success variant) should be promoted to a
-  theme token and used for the SyncStrip's on-label + icon; today they reuse
-  `semantic.success` (#4A9B6F), one shade darker than the mock.
+- **Alpha-of-token colors → theme.** Two amber/green accents are currently
+  local `rgba(...)` constants (consistent with this feature's other overlay
+  chrome) rather than tokens: the Design's brighter sync-on green (#6DC98A,
+  also inlined in `Badge.tsx`'s success variant; today the toggle reuses
+  `semantic.success` #4A9B6F), and the landscape center-axis line
+  (`rgba(196,125,42,0.3)` = `semantic.warning` at 30% in `ComparisonPlayer`).
+  Promote both to named theme tokens (alpha variants, like `colors.pose.*`).
 - **Impact tick vs. slider thumb inset.** The amber tick is positioned by a
   simple `left: fraction%` over the community Slider, which insets its track
   by ~half the thumb — so the tick is a hair off near the very ends (fine
