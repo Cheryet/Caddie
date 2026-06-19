@@ -105,15 +105,20 @@ export function createMetronome(): Metronome {
   }
 
   function stop(): void {
+    // Pause scheduling only — keep the AudioContext, engine and audio session
+    // alive so the next start() produces sound. Deactivating the session here
+    // stops the AVAudioEngine while the context stays 'running', so it won't
+    // restart on the next play (and we can't call resume() — that races the
+    // engine start and crashes). The session is released in dispose().
     if (timer) {
       clearInterval(timer);
       timer = null;
     }
-    AudioManager.setAudioSessionActivity(false).catch(() => {});
   }
 
   function dispose(): void {
     stop();
+    AudioManager.setAudioSessionActivity(false).catch(() => {});
     if (ctx) {
       ctx.close().catch(() => {});
       ctx = null;
