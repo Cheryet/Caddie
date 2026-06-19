@@ -23,6 +23,7 @@
     "date-fns": "^4.4.0",
     "react": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-audio-api": "^0.12.2",
     "react-native-compressor": "^1.16.0",
     "react-native-config": "^1.5.5",
     "react-native-gesture-handler": "^3.0.1",

@@ -1346,6 +1346,51 @@ toggle correctly stays hidden on the sim (engine never reports `ready`).
 
 ---
 
+## Phase 5.3 — Metronome audio swapped to react-native-audio-api (spec deviation)
+
+**Decision:** The tempo metronome uses **react-native-audio-api** (Software
+Mansion) for audio, not the `react-native-sound` named in PROJECT_SPEC §8.
+Documented in §8 + §16 Risk 8; mirrors the §16 Risk 4 pattern (swap a
+spec-named package that doesn't fit, keep the abstraction stable).
+
+**Why:**
+1. `react-native-sound` is uninstalled and effectively unmaintained (last
+   release ~2021); it predates this app's New Architecture (RN 0.86, Fabric/
+   Hermes, Reanimated 4, Nitro) — real build/compat risk.
+2. A metronome needs accurate timing. `react-native-sound` would be driven by a
+   JS `setInterval`, which drifts. `react-native-audio-api` exposes the Web
+   Audio API, so clicks are scheduled on the audio clock via a look-ahead
+   scheduler ("A Tale of Two Clocks") — sample-accurate, drift-free.
+3. It synthesises the click with an `OscillatorNode` → no audio asset to
+   source, bundle, or licence.
+4. Same maintainer/stack as Reanimated (already a core dep), so low ecosystem
+   risk.
+
+**Where:** engine in `src/features/tempo/metronome.ts` (`createMetronome()` →
+`start/setBpm/stop/dispose`); consumed by `src/features/tempo/hooks/useTempo.ts`.
+The visual pulse (`PulseRing`) is a Reanimated loop at the beat duration,
+decoupled from the audio scheduler (both driven by BPM) — matches the
+prototype's CSS-timed rings.
+
+**iOS audio session:** `AudioManager.setAudioSessionOptions({ iosCategory:
+'playback', iosOptions: ['mixWithOthers'] })` so the click is audible through
+the ring/silent switch and coexists with other audio. Audio plays on the
+Simulator, so Phase 5.3 is fully sim-verifiable (unlike pose).
+
+**Swap-back path:** only `metronome.ts` changes if we revert to another audio
+library — `useTempo`'s engine interface stays identical.
+
+**Residual / deferred:**
+- **Haptics** — DESIGN_SYSTEM §8 calls for haptic feedback on key taps
+  (play/stop, long-press save). `react-native-haptic-feedback` (PROJECT_SPEC §8)
+  is **not installed**; haptics are deferred to Phase 5.5 polish to avoid a
+  second native dep here. Metronome feedback is audio + visual for now.
+- **Preset save failure** keeps the optimistic in-memory value and shows a Toast
+  rather than reverting (a low-stakes write; reverting a just-made save is more
+  jarring than a stale-until-retry value).
+
+---
+
 ## Done
 
 <!-- Move items here with a date when shipped, e.g.:

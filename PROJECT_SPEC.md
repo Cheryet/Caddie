@@ -247,7 +247,7 @@ Key events: video_recorded, video_imported, analysis_requested, analysis_complet
 | @shopify/flash-list | latest | High-performance lists. Replaces FlatList everywhere. |
 | react-native-haptic-feedback | latest | Haptics on key interactions. |
 | react-native-purchases | latest | RevenueCat StoreKit 2 wrapper. |
-| react-native-sound | latest | Metronome audio. |
+| react-native-audio-api | latest | Metronome audio — Web Audio API, synthesised click (no asset). Replaces the spec's original `react-native-sound` (unmaintained, pre-New-Architecture); see §16 Risk 8 / TODO.md. |
 | react-native-uuid | latest | UUID generation before Supabase insert. |
 | @react-native-community/slider | latest | Frame scrub slider. |
 | date-fns | latest | Date formatting. Lightweight, tree-shakeable. |
@@ -1047,6 +1047,13 @@ Using unlicensed tour footage risks App Store removal and legal action.
 
 Mitigation: Not included in MVP. See Section 16.
 
+### Risk 8 — Metronome audio package — RESOLVED via react-native-audio-api
+**Severity**: Low | **Probability**: Low | **Status**: RESOLVED
+
+The spec's originally-named `react-native-sound` (§8) is effectively unmaintained (last release ~2021) and predates the app's New Architecture (RN 0.86, Fabric/Hermes, Reanimated 4, Nitro) — build/compatibility risk — and its `setInterval`-driven playback drifts, which a metronome cannot tolerate.
+
+Mitigation (taken): Phase 5.3 uses **react-native-audio-api** (Software Mansion — same stack as Reanimated) instead. It is New-Architecture-native, implements the Web Audio API, schedules clicks sample-accurately via a look-ahead scheduler, and synthesises the click with an oscillator (no bundled audio asset). The engine is isolated in `src/features/tempo/metronome.ts` behind a `start/setBpm/stop/dispose` interface, so swapping audio libraries later touches only that file. Full write-up in TODO.md.
+
 ---
 
 ## 22. Implementation Phases
@@ -1292,7 +1299,7 @@ HomeScreen populated with real data.
 
 ### Phase 5.3 — Tempo trainer
 Functional metronome with presets.
-- Install react-native-sound
+- Install react-native-audio-api (replaces react-native-sound — see §8 + §16 Risk 8)
 - BPM display, play/stop, +/- with hold-to-fast-change
 - 4 preset slots (long-press to save, persisted to Supabase)
 - PulseRing animation (Reanimated)
