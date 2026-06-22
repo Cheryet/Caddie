@@ -221,32 +221,18 @@ commit history when this phase is picked back up.
 
 ---
 
-## Profile-driven capture defaults (swing hand + camera angle)
+## ~~Profile-driven capture defaults (swing hand + camera angle)~~ — RESOLVED 2026-06-22 (Phase 5.4)
 
-**Status:** `CameraScreen` hardcodes swing hand to `'right'` and camera
-angle to `'face-on'` as the per-recording defaults. The screen still
-lets the user override them per-recording (segmented controls), but it
-ignores any profile preference.
-
-**Why deferred:** ProfileScreen doesn't exist yet, and the `profiles`
-table is missing `default_camera_angle` / `default_club` columns. Adding
-them would require a migration + types regen + UI to set them. Out of
-scope for Phase 1.3 — would prematurely overlap Phase 1.5 (ProfileScreen).
-
-**Spec reference:** `PROJECT_SPEC.md` §4 line 63 — "Swing hand selector —
-right or left handed (defaults to profile preference, overridable per
-video)". Today we satisfy the *overridable per video* half; the *defaults
-to profile preference* half is pending.
-
-**Revisit when:** ProfileScreen lands (Phase 1.5 or earlier). Steps:
-1. Add `default_camera_angle` + `default_club` columns to `profiles`
-   via a Supabase migration; regenerate `src/types/database.ts`
-2. Build a `useProfilePreferences` hook in `src/features/profile/hooks/`
-3. In `CameraScreen`, replace the `useState` initialisers for
-   `angle`, `swingHand`, `club` with hook-derived defaults; keep
-   the local `useState` for per-recording overrides
-4. Wire ProfileScreen's "Default camera angle" + "Default club" rows
-   to update the profile row (see Design/Caddie Screens.dc.html line 1099)
+`CameraScreen` + `ImportConfirmSheet` now initialise `angle`/`swingHand` from
+`src/utils/captureDefaults.ts` (and `club` from `loadLastClub`) instead of the
+hardcoded `DEFAULT_*` constants; per-recording overrides remain. ProfileScreen's
+Preferences rows write the defaults: **swing hand → `profiles.swing_hand`**
+(`useProfile.updateSwingHand`) plus an MMKV mirror; **camera angle → MMKV**;
+**club → MMKV (`lastClub`)**. We deliberately did **not** add
+`default_camera_angle` / `default_club` columns — MMKV is sufficient for
+device-local defaults (see the Phase 5.4 entry below for the cross-device
+option). Satisfies `PROJECT_SPEC.md` §4 line 63 ("defaults to profile
+preference, overridable per video").
 
 ---
 
@@ -1391,7 +1377,36 @@ library — `useTempo`'s engine interface stays identical.
 
 ---
 
+## Phase 5.4 — Profile & settings (built UI, deferred wiring)
+
+ProfileScreen ships the full Design §06 layout; several rows are UI-only for
+now (per the user — build the design, wire later). Remaining wiring:
+
+- **Avatar upload** — deferred; needs a public `avatars` Storage bucket (+RLS)
+  and an image-picker upload writing `profiles.avatar_url`. The edit pencil
+  toasts "coming soon" today.
+- **Local-only prefs** (`src/features/profile/profilePrefs.ts`, MMKV): the
+  Auto-analyse, Pose-overlay-default, Practice-reminders, Weekly-email toggles
+  and the Handicap input persist but drive nothing yet. Wire: auto-analyse →
+  analysis pipeline; pose-default → PlaybackScreen's pose toggle initial;
+  reminders/weekly-email → notification scheduling/push; handicap → a real
+  `profiles.handicap` column (migration + types regen).
+- **"Coming soon" rows**: Redeem promo code (RevenueCat redemption), Full-name
+  edit, Password change, the header settings button.
+- **Support links** use placeholder URLs (`PRIVACY_URL`/`TERMS_URL`/`HELP_URL`
+  in `config.ts`) — point at real pages before launch.
+- **Cross-device default angle/club**: device-local (MMKV) today; add
+  `default_camera_angle`/`default_club` columns if we want them synced.
+- **Pushed SettingsScreen route** is now unused (design consolidates into one
+  ProfileScreen); placeholder + route remain harmless — remove or repurpose
+  for a future detail screen (e.g. Manage subscription).
+- **Clear cache** (spec'd) omitted — no defined cache layer to clear yet.
+
+---
+
 ## Done
+
+- ~~Profile-driven capture defaults (swing hand + camera angle)~~ — 2026-06-22 (Phase 5.4); see the struck section above.
 
 <!-- Move items here with a date when shipped, e.g.:
 - ~~Wire `react-native-config` iOS build phase~~ — 2026-06-15, was a Phase 0.1 scaffold gap surfaced by Phase 0.6 simulator test

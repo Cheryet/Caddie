@@ -20,12 +20,12 @@ import {
   ClubChips,
   HandSegmented,
 } from '@/components/swing-meta';
-import {
-  DEFAULT_CAMERA_ANGLE,
-  DEFAULT_SWING_HAND,
-} from '@/constants/camera';
 import type { CameraAngle, SwingHand } from '@/constants/camera';
 import type { ClubType } from '@/constants/clubs';
+import {
+  loadDefaultCameraAngle,
+  loadDefaultSwingHand,
+} from '@/utils/captureDefaults';
 import { colors, layout, spacing, typography } from '@/theme';
 
 export interface ImportConfirmMetadata {
@@ -49,8 +49,8 @@ export function ImportConfirmSheet({
   onConfirm,
   onDismiss,
 }: ImportConfirmSheetProps) {
-  const [angle, setAngle] = useState<CameraAngle>(DEFAULT_CAMERA_ANGLE);
-  const [swingHand, setSwingHand] = useState<SwingHand>(DEFAULT_SWING_HAND);
+  const [angle, setAngle] = useState<CameraAngle>(loadDefaultCameraAngle);
+  const [swingHand, setSwingHand] = useState<SwingHand>(loadDefaultSwingHand);
   const [club, setClub] = useState<ClubType>(defaultClub);
 
   return (

@@ -22,3 +22,4 @@ export { Input } from './Input';
 export { ProGate } from './ProGate';
 export { Skeleton } from './Skeleton';
 export { Toast, ToastHost, type ToastVariant } from './Toast';
+export { Toggle } from './Toggle';

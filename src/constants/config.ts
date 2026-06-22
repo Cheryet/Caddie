@@ -28,6 +28,17 @@ export const SIGNED_URL_TTL_MIN = 15;
 export const RC_ENTITLEMENT = 'caddie_pro';
 export const RC_PRODUCT_MONTHLY = 'caddie_pro_monthly';
 export const RC_PRODUCT_ANNUAL = 'caddie_pro_annual';
+/** Apple's account-level subscription management page (ProfileScreen → Manage). */
+export const APP_STORE_SUBSCRIPTIONS_URL =
+  'https://apps.apple.com/account/subscriptions';
+
+// ───── App / profile (PROJECT_SPEC.md §22 Phase 5.4) ─────
+export const APP_VERSION = '1.0';
+// Placeholder destinations for the Profile support rows — swap for the real
+// hosted pages before launch (tracked in TODO.md).
+export const PRIVACY_URL = 'https://caddie.app/privacy';
+export const TERMS_URL = 'https://caddie.app/terms';
+export const HELP_URL = 'https://caddie.app/help';
 
 // ───── Environment variables ─────
 // Typed wrapper over react-native-config. Values come from the iOS bundle

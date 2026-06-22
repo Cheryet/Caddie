@@ -45,11 +45,7 @@ import type { Recorder } from 'react-native-vision-camera';
 
 import { EmptyState } from '@/components/ui';
 import { MAX_RECORDING_DURATION_SEC } from '@/constants/config';
-import {
-  COUNTDOWN_DURATION_SEC,
-  DEFAULT_CAMERA_ANGLE,
-  DEFAULT_SWING_HAND,
-} from '@/constants/camera';
+import { COUNTDOWN_DURATION_SEC } from '@/constants/camera';
 import type { CameraAngle, SwingHand } from '@/constants/camera';
 import type { ClubType } from '@/constants/clubs';
 import {
@@ -58,6 +54,10 @@ import {
   HandSegmented,
 } from '@/components/swing-meta';
 import { loadLastClub, setLastClub } from '@/utils/lastClub';
+import {
+  loadDefaultCameraAngle,
+  loadDefaultSwingHand,
+} from '@/utils/captureDefaults';
 import {
   openAppSettings,
   useCameraPermission,
@@ -84,8 +84,11 @@ export function CameraScreen({ navigation }: RootStackScreenProps<'Camera'>) {
     enableAudio: true,
   });
 
-  const [angle, setAngle] = useState<CameraAngle>(DEFAULT_CAMERA_ANGLE);
-  const [swingHand, setSwingHand] = useState<SwingHand>(DEFAULT_SWING_HAND);
+  // Defaults come from the user's profile/settings (resolves the "profile-
+  // driven capture defaults" TODO); each stays an overridable per-recording
+  // useState. Club's default is the persisted last-used club (loadLastClub).
+  const [angle, setAngle] = useState<CameraAngle>(loadDefaultCameraAngle);
+  const [swingHand, setSwingHand] = useState<SwingHand>(loadDefaultSwingHand);
   const [club, setClub] = useState<ClubType>(loadLastClub);
   const [showGuides, setShowGuides] = useState(true);
   const [mode, setMode] = useState<CaptureMode>('idle');
