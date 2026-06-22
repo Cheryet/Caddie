@@ -1404,6 +1404,27 @@ now (per the user — build the design, wire later). Remaining wiring:
 
 ---
 
+## react-native-orientation-locker — teardown listener warning (suppressed in dev)
+
+**Symptom:** dev red box "Attempted to remove more Orientation listeners than
+added", trace through `-[Orientation dealloc] → -[RCTEventEmitter
+removeListeners:]`. Fires at module teardown (reload / app exit) on the New
+Architecture (RN 0.86).
+
+**Why it's benign:** RCTEventEmitter self-clamps (`_listenerCount = 0`), and
+our code adds **no** orientation listeners — `core/orientation` only calls
+`lockToPortrait` / `unlockAllOrientations` (imperative). It's an
+`RCTLogError`, which red-boxes only in dev; release just logs.
+
+**Mitigation (taken):** `LogBox.ignoreLogs([...])` in `index.js`, dev-only.
+
+**Revisit:** drop the ignore if the library ships a New-Architecture fix. If
+it ever surfaces in release or the lib stays unmaintained, options are
+patch-package (clamp `removeListeners`) or a thin native shim — we only use
+lock/unlock, so we don't need the event emitter at all.
+
+---
+
 ## Done
 
 - ~~Profile-driven capture defaults (swing hand + camera angle)~~ — 2026-06-22 (Phase 5.4); see the struck section above.
