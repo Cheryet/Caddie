@@ -367,18 +367,14 @@ get a row into the table without seeding. At that point delete the
 
 ---
 
-## Library — VideoDetail screen (Phase 1.8)
+## ~~Library — VideoDetail screen (Phase 1.8)~~ — REMOVED 2026-06-23 (Phase 5.5)
 
-**Status:** `VideoDetailScreen` is still a `Placeholder`. The Library
-grid does NOT route into it — card tap goes straight to root-stack
-`Playback` (matches the design caption: "Tapping a card runs the
-expand-from-thumbnail transition into Playback"). The route remains in
-`LibraryStackParamList` because the rename/retag/delete sheet from
-Phase 1.8 will land there.
-
-**Revisit when:** Phase 1.8 (Video management). The screen should host
-the metadata edit form (title, club, angle, hand, tags) and a delete
-action that fires both row delete + Storage delete.
+The placeholder `VideoDetailScreen` + its `VideoDetail` route were never
+reached: the Library grid routes straight to root-stack `Playback`, and
+Phase 1.8 video management shipped as the long-press Edit/Delete sheets
+(`EditVideoSheet` / `DeleteConfirmSheet`), not a detail screen. Removed the
+dead route, the param-list entry, and the file in the 5.5 cleanup. Re-add a
+push screen here if a richer per-swing detail view is ever wanted.
 
 ---
 

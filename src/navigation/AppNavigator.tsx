@@ -14,7 +14,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { HomeScreen } from '@/features/home/screens/HomeScreen';
 import { LibraryScreen } from '@/features/library/screens/LibraryScreen';
-import { VideoDetailScreen } from '@/features/library/screens/VideoDetailScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { SettingsScreen } from '@/features/profile/screens/SettingsScreen';
 import { TempoScreen } from '@/features/tempo/screens/TempoScreen';
@@ -42,11 +41,6 @@ function LibraryNavigator() {
         name="Library"
         component={LibraryScreen}
         options={{ headerShown: false }}
-      />
-      <LibraryStack.Screen
-        name="VideoDetail"
-        component={VideoDetailScreen}
-        options={{ title: 'Video' }}
       />
     </LibraryStack.Navigator>
   );

@@ -25,7 +25,6 @@ export type AuthStackParamList = {
 // ───── Tab-nested stacks (push nav within a tab) ─────
 export type LibraryStackParamList = {
   Library: undefined;
-  VideoDetail: { videoId: string };
 };
 
 export type ProfileStackParamList = {
