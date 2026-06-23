@@ -62,6 +62,7 @@ jest.mock('@/utils/upload', () => ({
     data: { videoId: 'vid-1' },
     error: null,
   }),
+  setVideoDuration: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/store/useAppStore', () => ({

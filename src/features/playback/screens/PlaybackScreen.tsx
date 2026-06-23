@@ -35,7 +35,7 @@ import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
 import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
 import { useAppStore } from '@/store/useAppStore';
-import { uploadRecording } from '@/utils/upload';
+import { setVideoDuration, uploadRecording } from '@/utils/upload';
 import { formatRelativeDate } from '@/utils/relativeTime';
 import { colors, spacing, typography } from '@/theme';
 import type { RootStackScreenProps } from '@/navigation/types';
@@ -77,15 +77,13 @@ export function PlaybackScreen({
 
   const playback = usePlayback({
     onSeek: (timeSec: number) => playerRef.current?.seek(timeSec),
-    // Chrome stays visible while:
-    //   1. The user is mid-stroke (so controls don't fade out
-    //      from under their finger).
-    //   2. Angle tool is active. Angle is the one drawing tool that
-    //      genuinely needs every tap (3-tap placement), so the
-    //      tap-to-toggle-chrome chain can't reach. Locking the
-    //      chrome up means the toolbar stays reachable for the user
-    //      to switch tools and exit.
-    chromeLocked: drawing.isStroking || drawing.tool === 'angle',
+    // Pin the chrome (which hosts the DrawingToolbar) whenever the user is
+    // annotating — i.e. any tool other than 'none' is selected, or a stroke
+    // is in flight. Otherwise the toolbar fades out between strokes, which
+    // makes drawing on a swing infuriating. Auto-hide still applies while
+    // just watching/scrubbing (tool === 'none'); tapping the video then
+    // toggles the chrome back to pick a tool.
+    chromeLocked: drawing.isStroking || drawing.tool !== 'none',
   });
 
   // Pose overlay (Phase 3.2). Off by default; the pill only shows once
@@ -146,6 +144,18 @@ export function PlaybackScreen({
       cancelled = true;
     };
   }, [params, userId]);
+
+  // Persist the clip's real duration once the player reports it. Recordings
+  // are inserted before the player loads, so the row's duration_ms starts
+  // null (the library card shows 0:00); this also backfills older rows the
+  // first time they're played. Runs once per screen.
+  const durationSyncedRef = useRef(false);
+  useEffect(() => {
+    if (durationSyncedRef.current) return;
+    if (!analyzableVideoId || playback.durationMs <= 0) return;
+    durationSyncedRef.current = true;
+    setVideoDuration(analyzableVideoId, playback.durationMs).catch(() => {});
+  }, [analyzableVideoId, playback.durationMs]);
 
   // Surface a one-off toast if the pose pre-compute fails (e.g. the clip
   // couldn't be downloaded for analysis).

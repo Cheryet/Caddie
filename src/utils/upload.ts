@@ -173,6 +173,25 @@ export async function uploadRecording(
   return ok({ videoId });
 }
 
+/**
+ * Persist a swing's playback duration once it's known. Recordings are
+ * inserted (above) BEFORE the player has loaded the clip, so `duration_ms`
+ * starts null and the library card shows 0:00. PlaybackScreen calls this once
+ * the player reports the duration — fixing fresh recordings and backfilling
+ * older rows the first time they're played. Best-effort: a failure just
+ * leaves the badge at 0:00, so the error is swallowed.
+ */
+export async function setVideoDuration(
+  videoId: string,
+  durationMs: number,
+): Promise<void> {
+  if (durationMs <= 0) return;
+  await supabase
+    .from('videos')
+    .update({ duration_ms: Math.round(durationMs) })
+    .eq('id', videoId);
+}
+
 // ───── Helpers ───────────────────────────────────────────────────────────
 
 function finalize(
