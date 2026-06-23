@@ -286,3 +286,20 @@ jest.mock('react-native-orientation-locker', () => ({
     removeOrientationListener: jest.fn(),
   },
 }));
+
+// @react-native-community/netinfo wraps a native module. Stub the surface our
+// core/netinfo wrapper uses: addEventListener (fires once with the current
+// state, returns an unsubscribe) + fetch. Defaults to connected; the
+// network-status tests override addEventListener per-case to drive offline.
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(cb => {
+      cb({ isConnected: true, isInternetReachable: true });
+      return () => {};
+    }),
+    fetch: jest
+      .fn()
+      .mockResolvedValue({ isConnected: true, isInternetReachable: true }),
+  },
+}));

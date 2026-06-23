@@ -20,6 +20,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/ui';
+import { useNetworkStatus } from '@/components/useNetworkStatus';
 import { DrawingCanvas } from '@/features/drawing/components/DrawingCanvas';
 import { DrawingToolbar } from '@/features/drawing/components/DrawingToolbar';
 import { useDrawing } from '@/features/drawing/hooks/useDrawing';
@@ -174,10 +175,18 @@ export function PlaybackScreen({
     });
   }, [shareSwing]);
 
+  const { isOffline } = useNetworkStatus();
   const handleAnalyse = useCallback(() => {
     if (!analyzableVideoId) return;
+    if (isOffline) {
+      Toast.show({
+        message: "You're offline — connect to analyse your swing.",
+        variant: 'error',
+      });
+      return;
+    }
     navigation.navigate('Analysis', { videoId: analyzableVideoId });
-  }, [navigation, analyzableVideoId]);
+  }, [navigation, analyzableVideoId, isOffline]);
 
   // ─── Body branches ────────────────────────────────────────────────────
   if (source.error) {

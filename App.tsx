@@ -12,6 +12,7 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { OrientationBootstrap } from '@/components/OrientationBootstrap';
 import { ToastHost } from '@/components/ui';
 import { AuthBootstrap } from '@/features/auth/components/AuthBootstrap';
@@ -32,6 +33,7 @@ function App() {
         <UploadQueueBootstrap />
         <PoseBootstrap />
         <RootNavigator />
+        <OfflineBanner />
         <UpgradeSheetHost />
         <ToastHost />
       </SafeAreaProvider>
