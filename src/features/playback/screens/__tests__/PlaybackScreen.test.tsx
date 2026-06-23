@@ -100,9 +100,16 @@ jest.mock('@/features/subscription/hooks/useSubscription', () => {
     __sub: state,
   };
 });
-jest.mock('@/features/subscription/components/UpgradeSheet', () => ({
-  UpgradeSheet: { show: jest.fn() },
-}));
+// Locally-hosted paywall: render a marker when visible so the test can
+// assert it appears over the screen.
+jest.mock('@/features/subscription/components/UpgradeSheet', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return {
+    UpgradeSheetView: ({ visible }: { visible: boolean }) =>
+      visible ? React.createElement(Text, null, 'upgrade-sheet') : null,
+  };
+});
 
 jest.mock('@/components/ui', () => {
   const React = require('react');
@@ -165,9 +172,6 @@ const { uploadRecording } = require('@/utils/upload') as {
 const { __sub } = require('@/features/subscription/hooks/useSubscription') as {
   __sub: { isPro: boolean };
 };
-const { UpgradeSheet } = require('@/features/subscription/components/UpgradeSheet') as {
-  UpgradeSheet: { show: jest.Mock };
-};
 const { PlaybackScreen } = require('../PlaybackScreen');
 
 // ───── Helpers ───────────────────────────────────────────────────────────
@@ -228,16 +232,17 @@ describe('PlaybackScreen', () => {
     expect(getByText('7 Iron')).toBeTruthy();
   });
 
-  it('opens the upgrade sheet (not Analysis) when a free user taps the Analyse pill', () => {
+  it('shows the upgrade sheet over the screen (not Analysis) when a free user taps the Analyse pill', () => {
     const nav = makeNav();
-    const { getByText } = wrap(
+    const { getByText, queryByText } = wrap(
       <PlaybackScreen
         navigation={nav}
         route={{ key: 'k', name: 'Playback', params: { videoId: 'vid-1' } }}
       />,
     );
+    expect(queryByText('upgrade-sheet')).toBeNull();
     fireEvent.press(getByText('Analyse with AI'));
-    expect(UpgradeSheet.show).toHaveBeenCalledTimes(1);
+    expect(queryByText('upgrade-sheet')).toBeTruthy();
     expect(nav.navigate).not.toHaveBeenCalledWith(
       'Analysis',
       expect.anything(),
@@ -247,7 +252,7 @@ describe('PlaybackScreen', () => {
   it('navigates to Analysis when a Pro user taps the Analyse pill', () => {
     __sub.isPro = true;
     const nav = makeNav();
-    const { getByText } = wrap(
+    const { getByText, queryByText } = wrap(
       <PlaybackScreen
         navigation={nav}
         route={{ key: 'k', name: 'Playback', params: { videoId: 'vid-1' } }}
@@ -255,7 +260,7 @@ describe('PlaybackScreen', () => {
     );
     fireEvent.press(getByText('Analyse with AI'));
     expect(nav.navigate).toHaveBeenCalledWith('Analysis', { videoId: 'vid-1' });
-    expect(UpgradeSheet.show).not.toHaveBeenCalled();
+    expect(queryByText('upgrade-sheet')).toBeNull();
   });
 
   it('renders the loading view when source is not ready', () => {

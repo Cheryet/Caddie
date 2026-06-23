@@ -82,7 +82,14 @@ interface UpgradeSheetViewProps {
   onDismiss: () => void;
 }
 
-function UpgradeSheetView({ visible, onDismiss }: UpgradeSheetViewProps) {
+/**
+ * The paywall UI. Normally driven by the global host above, but exported
+ * so a screen presented as a native-stack *modal* (e.g. PlaybackScreen)
+ * can host its own instance: the App-root host's RN Modal can't present
+ * over a native modal VC, so such screens render this directly to appear
+ * on top of themselves.
+ */
+export function UpgradeSheetView({ visible, onDismiss }: UpgradeSheetViewProps) {
   const { status, packages, purchase, restore } = useUpgrade({
     enabled: visible,
     onClose: onDismiss,

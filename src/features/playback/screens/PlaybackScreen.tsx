@@ -39,7 +39,7 @@ import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
 import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
 import { useSubscription } from '@/features/subscription/hooks/useSubscription';
-import { UpgradeSheet } from '@/features/subscription/components/UpgradeSheet';
+import { UpgradeSheetView } from '@/features/subscription/components/UpgradeSheet';
 import { TrimBar } from '@/features/trimming/components/TrimBar';
 import { useTrim } from '@/features/trimming/hooks/useTrim';
 import type { MaterializedClip } from '@/features/trimming/hooks/useTrim';
@@ -131,6 +131,12 @@ export function PlaybackScreen({
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isReview = isLocal && !saved;
+
+  // Paywall hosted locally (not via the global UpgradeSheet singleton):
+  // this screen is a native-stack modal, and the App-root host can't
+  // present its RN Modal over a native modal VC — it'd only appear after
+  // leaving the screen. Rendering it here presents it over the player.
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   // The swing is analysable once it has a saved row id — immediately for a
   // library video, or after Save for a fresh recording. Drives the
@@ -228,11 +234,10 @@ export function PlaybackScreen({
   const { isOffline } = useNetworkStatus();
   const handleAnalyse = useCallback(() => {
     if (!analyzableVideoId) return;
-    // Free users: open the paywall straight from the pill (the same global
-    // sheet ProGate triggers) — a focused upsell, not a full-screen gate.
-    // Pro users run the analysis.
+    // Free users: open the paywall straight from the pill — a focused
+    // upsell, not a full-screen gate. Pro users run the analysis.
     if (!isPro) {
-      UpgradeSheet.show();
+      setShowUpgrade(true);
       return;
     }
     if (isOffline) {
@@ -373,6 +378,11 @@ export function PlaybackScreen({
       {poseTrack.status === 'analyzing' ? (
         <PoseAnalyzingOverlay elapsedSec={poseTrack.elapsedSec} />
       ) : null}
+
+      <UpgradeSheetView
+        visible={showUpgrade}
+        onDismiss={() => setShowUpgrade(false)}
+      />
     </View>
   );
 }
