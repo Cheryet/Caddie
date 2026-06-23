@@ -91,10 +91,17 @@ jest.mock('@/store/useAppStore', () => ({
     selector({ user: { id: 'user-1' } }),
 }));
 
-// Free user → the Analyse pill renders its PRO lure. Mocked so the test
-// never reaches RevenueCat.
-jest.mock('@/features/subscription/hooks/useSubscription', () => ({
-  useSubscription: () => ({ isPro: false, refresh: jest.fn() }),
+// Subscription state is flippable per test; default free so the Analyse
+// pill shows its PRO lure. Mocked so the test never reaches RevenueCat.
+jest.mock('@/features/subscription/hooks/useSubscription', () => {
+  const state = { isPro: false };
+  return {
+    useSubscription: () => ({ isPro: state.isPro, refresh: jest.fn() }),
+    __sub: state,
+  };
+});
+jest.mock('@/features/subscription/components/UpgradeSheet', () => ({
+  UpgradeSheet: { show: jest.fn() },
 }));
 
 jest.mock('@/components/ui', () => {
@@ -155,6 +162,12 @@ const { __state: sourceState } = require('@/features/playback/hooks/useVideoSour
 const { uploadRecording } = require('@/utils/upload') as {
   uploadRecording: jest.Mock;
 };
+const { __sub } = require('@/features/subscription/hooks/useSubscription') as {
+  __sub: { isPro: boolean };
+};
+const { UpgradeSheet } = require('@/features/subscription/components/UpgradeSheet') as {
+  UpgradeSheet: { show: jest.Mock };
+};
 const { PlaybackScreen } = require('../PlaybackScreen');
 
 // ───── Helpers ───────────────────────────────────────────────────────────
@@ -197,6 +210,7 @@ function resetSource() {
 beforeEach(() => {
   jest.clearAllMocks();
   resetSource();
+  __sub.isPro = false;
 });
 
 // ───── Tests ─────────────────────────────────────────────────────────────
@@ -214,7 +228,24 @@ describe('PlaybackScreen', () => {
     expect(getByText('7 Iron')).toBeTruthy();
   });
 
-  it('navigates to Analysis when the Analyse with AI CTA is tapped', () => {
+  it('opens the upgrade sheet (not Analysis) when a free user taps the Analyse pill', () => {
+    const nav = makeNav();
+    const { getByText } = wrap(
+      <PlaybackScreen
+        navigation={nav}
+        route={{ key: 'k', name: 'Playback', params: { videoId: 'vid-1' } }}
+      />,
+    );
+    fireEvent.press(getByText('Analyse with AI'));
+    expect(UpgradeSheet.show).toHaveBeenCalledTimes(1);
+    expect(nav.navigate).not.toHaveBeenCalledWith(
+      'Analysis',
+      expect.anything(),
+    );
+  });
+
+  it('navigates to Analysis when a Pro user taps the Analyse pill', () => {
+    __sub.isPro = true;
     const nav = makeNav();
     const { getByText } = wrap(
       <PlaybackScreen
@@ -224,6 +255,7 @@ describe('PlaybackScreen', () => {
     );
     fireEvent.press(getByText('Analyse with AI'));
     expect(nav.navigate).toHaveBeenCalledWith('Analysis', { videoId: 'vid-1' });
+    expect(UpgradeSheet.show).not.toHaveBeenCalled();
   });
 
   it('renders the loading view when source is not ready', () => {

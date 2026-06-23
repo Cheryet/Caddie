@@ -39,6 +39,7 @@ import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
 import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
 import { useSubscription } from '@/features/subscription/hooks/useSubscription';
+import { UpgradeSheet } from '@/features/subscription/components/UpgradeSheet';
 import { TrimBar } from '@/features/trimming/components/TrimBar';
 import { useTrim } from '@/features/trimming/hooks/useTrim';
 import type { MaterializedClip } from '@/features/trimming/hooks/useTrim';
@@ -227,6 +228,13 @@ export function PlaybackScreen({
   const { isOffline } = useNetworkStatus();
   const handleAnalyse = useCallback(() => {
     if (!analyzableVideoId) return;
+    // Free users: open the paywall straight from the pill (the same global
+    // sheet ProGate triggers) — a focused upsell, not a full-screen gate.
+    // Pro users run the analysis.
+    if (!isPro) {
+      UpgradeSheet.show();
+      return;
+    }
     if (isOffline) {
       Toast.show({
         message: "You're offline — connect to analyse your swing.",
@@ -235,7 +243,7 @@ export function PlaybackScreen({
       return;
     }
     navigation.navigate('Analysis', { videoId: analyzableVideoId });
-  }, [navigation, analyzableVideoId, isOffline]);
+  }, [navigation, analyzableVideoId, isPro, isOffline]);
 
   // ─── Body branches ────────────────────────────────────────────────────
   if (source.error) {
