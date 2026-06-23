@@ -19,7 +19,8 @@
  *                              actual recording. Compiled out in release.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -38,6 +39,7 @@ import { supabase } from '@/core/supabase/client';
 import { DeleteConfirmSheet } from '@/features/library/components/DeleteConfirmSheet';
 import { EditVideoSheet } from '@/features/library/components/EditVideoSheet';
 import { ImportConfirmSheet } from '@/features/library/components/ImportConfirmSheet';
+import type { ImportConfirmMetadata } from '@/features/library/components/ImportConfirmSheet';
 import { VideoCard } from '@/features/library/components/VideoCard';
 import { LibrarySkeletonCard } from '@/features/library/components/LibrarySkeletonCard';
 import { useImportVideo } from '@/features/library/hooks/useImportVideo';
@@ -63,8 +65,40 @@ export function LibraryScreen({
   const userId = useAppStore(s => s.user?.id ?? null);
   const { videos, isLoading, isRefreshing, error, refresh } = useVideos();
   const [isSeeding, setIsSeeding] = useState(false);
-  const importer = useImportVideo({ onUploadComplete: refresh });
+
+  // Imported clips route to the PlaybackScreen for review / trim / Save —
+  // the same path recordings take — so the upload (and trimming) happens
+  // there, unified.
+  const handleImportReview = useCallback(
+    (uri: string, meta: ImportConfirmMetadata) => {
+      navigation.navigate('Playback', {
+        localUri: uri,
+        angle: meta.angle,
+        clubType: meta.club,
+        swingHand: meta.swingHand,
+      });
+    },
+    [navigation],
+  );
+  const importer = useImportVideo({ onReview: handleImportReview });
   const management = useVideoManagement({ onMutationComplete: refresh });
+
+  // Refresh on every focus AFTER the first mount so a swing saved on the
+  // PlaybackScreen (recording or import) appears on return without a manual
+  // pull. The initial fetch is owned by useVideos, so the first focus is
+  // skipped to avoid a double load.
+  const didMountRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!didMountRef.current) {
+        didMountRef.current = true;
+        return;
+      }
+      refresh().catch(() => {
+        // Errors surface via the hook's error state / pull-to-refresh.
+      });
+    }, [refresh]),
+  );
 
   const openCamera = useCallback(() => {
     navigation.navigate('Camera');
@@ -222,7 +256,6 @@ export function LibraryScreen({
       <ImportConfirmSheet
         visible={importer.sheet.visible}
         defaultClub={importer.sheet.defaultClub}
-        isUploading={importer.sheet.isUploading}
         onConfirm={importer.sheet.onConfirm}
         onDismiss={importer.sheet.onDismiss}
       />

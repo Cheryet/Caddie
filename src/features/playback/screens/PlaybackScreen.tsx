@@ -1,25 +1,29 @@
 /**
  * PlaybackScreen — Screen
- * Mounts the playback surface for either a fresh recording (route is
- * `{ localUri, … }`) or a library entry (`{ videoId }`). Per PROJECT_
- * SPEC §22 Phase 1.7: full-bleed video, custom transport chrome,
+ * Mounts the playback surface for either a fresh recording / import
+ * (route is `{ localUri, … }`) or a library entry (`{ videoId }`). Per
+ * PROJECT_SPEC §22 Phase 1.7: full-bleed video, custom transport chrome,
  * 0.25× / 0.5× / 1× speed, frame-step buttons, auto-hide chrome.
  *
- * Post-recording behavior (Phase 1.6 decision): the player starts
- * IMMEDIATELY; `uploadRecording` runs in parallel and surfaces its
- * status as a small pill in the top bar. The user can review their
- * swing without waiting for the upload.
- *
- * Drawing toolbar, pose toggle, "Analyse with AI" CTA, and the impact
- * frame marker on the scrub track are deliberately deferred to later
- * phases — see TODO.md.
+ * Local clips (recordings + imports) open in REVIEW mode: the player
+ * starts immediately and a persistent bar offers **Trim** and **Save to
+ * library**. Nothing uploads until the user taps Save — so a fluffed take
+ * can be discarded, and trimming happens once, before upload ("trim on
+ * save", see useTrim). Library videos open straight into viewer mode.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Toast } from '@/components/ui';
+import { Button, Toast } from '@/components/ui';
 import { useNetworkStatus } from '@/components/useNetworkStatus';
 import { DrawingCanvas } from '@/features/drawing/components/DrawingCanvas';
 import { DrawingToolbar } from '@/features/drawing/components/DrawingToolbar';
@@ -34,17 +38,18 @@ import { useShareSwing } from '@/features/playback/hooks/useShareSwing';
 import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
 import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
+import { TrimBar } from '@/features/trimming/components/TrimBar';
+import { useTrim } from '@/features/trimming/hooks/useTrim';
+import type { MaterializedClip } from '@/features/trimming/hooks/useTrim';
 import { useAppStore } from '@/store/useAppStore';
 import { setVideoDuration, uploadRecording } from '@/utils/upload';
 import { formatRelativeDate } from '@/utils/relativeTime';
-import { colors, spacing, typography } from '@/theme';
+import { colors, layout, spacing, typography } from '@/theme';
 import type { RootStackScreenProps } from '@/navigation/types';
 
-type UploadStatus =
-  | { kind: 'idle' }
-  | { kind: 'uploading' }
-  | { kind: 'uploaded' }
-  | { kind: 'failed' };
+// Bottom padding the review bar occupies; the chrome's transport is lifted
+// by this much (extraBottomInset) so the two never overlap.
+const REVIEW_BAR_INSET = 64;
 
 export function PlaybackScreen({
   navigation,
@@ -58,6 +63,9 @@ export function PlaybackScreen({
   // share flow snapshots this ref via react-native-view-shot so the
   // exported JPEG includes both the current frame and the overlay.
   const captureRef = useRef<View>(null);
+
+  const isLocal = 'localUri' in params;
+  const localUri = isLocal ? params.localUri : null;
 
   // Drawing canvas state (Phase 2.2). Declared before usePlayback so
   // we can lock the chrome visible while a stroke is in flight.
@@ -86,6 +94,21 @@ export function PlaybackScreen({
     chromeLocked: drawing.isStroking || drawing.tool !== 'none',
   });
 
+  // Trim (recordings + imports only). The bar selects a [start,end]
+  // range; the re-encode runs once, in handleSave, via materialize().
+  const {
+    isOpen: trimOpen,
+    range: trimRange,
+    hasTrim,
+    thumbnails: trimThumbs,
+    thumbsStatus: trimThumbsStatus,
+    minDurationMs: trimMin,
+    open: openTrim,
+    close: closeTrim,
+    commit: commitTrim,
+    materialize: materializeTrim,
+  } = useTrim({ uri: localUri, durationMs: playback.durationMs });
+
   // Pose overlay (Phase 3.2). Off by default; the pill only shows once
   // the on-device engine reports ready. On enable, the whole clip's pose
   // is pre-computed once (usePoseTrack) so the skeleton animates smoothly
@@ -100,62 +123,76 @@ export function PlaybackScreen({
     setPoseEnabled(prev => !prev);
   }, []);
 
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: 'idle' });
+  // Review → saved. Local clips start unsaved (review mode); a saved
+  // library video, or a local clip after Save, is in viewer mode.
+  const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const isReview = isLocal && !saved;
+
   // The swing is analysable once it has a saved row id — immediately for a
-  // library video, or after the background upload for a fresh recording.
-  // Drives the "Analyse with AI" CTA (Phase 4.4).
+  // library video, or after Save for a fresh recording. Drives the
+  // "Analyse with AI" CTA (Phase 4.4).
   const [analyzableVideoId, setAnalyzableVideoId] = useState<string | null>(
     persistedVideoId,
   );
 
-  // ─── Background upload for fresh recordings ────────────────────────────
-  // Mirrors the previous behavior of this screen but no longer blocks
-  // the player surface — the upload runs in parallel.
-  useEffect(() => {
+  // ─── Save: trim (if any) then upload, once ─────────────────────────────
+  const handleSave = useCallback(async () => {
     if (!('localUri' in params)) return;
     if (!userId) {
-      setUploadStatus({ kind: 'failed' });
+      Toast.show({ message: 'Sign in to save your swing.', variant: 'error' });
       return;
     }
-    let cancelled = false;
-    setUploadStatus({ kind: 'uploading' });
-    (async () => {
-      const result = await uploadRecording({
-        localUri: params.localUri,
-        angle: params.angle,
-        clubType: params.clubType,
-        swingHand: params.swingHand,
-        userId,
+    setIsSaving(true);
+    let clip: MaterializedClip;
+    try {
+      clip = await materializeTrim(params.localUri);
+    } catch {
+      setIsSaving(false);
+      Toast.show({
+        message: 'Could not trim the video — try again.',
+        variant: 'error',
       });
-      if (cancelled) return;
-      if (result.error) {
-        setUploadStatus({ kind: 'failed' });
-        Toast.show({
-          message: 'Upload queued — will retry on next launch.',
-          variant: 'error',
-        });
-      } else {
-        setUploadStatus({ kind: 'uploaded' });
-        // A fresh recording can now be analysed — reveal the CTA.
-        setAnalyzableVideoId(result.data?.videoId ?? null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [params, userId]);
+      return;
+    }
+    const result = await uploadRecording({
+      localUri: clip.uri,
+      angle: params.angle,
+      clubType: params.clubType,
+      swingHand: params.swingHand,
+      userId,
+      durationMs: clip.durationMs ?? playback.durationMs,
+    });
+    setIsSaving(false);
+    setSaved(true);
+    if (result.error) {
+      Toast.show({
+        message: 'Saved — upload will finish on next launch.',
+        variant: 'error',
+      });
+    } else {
+      setAnalyzableVideoId(result.data?.videoId ?? null);
+      Toast.show({ message: 'Swing saved.', variant: 'success' });
+    }
+  }, [params, userId, materializeTrim, playback.durationMs]);
 
-  // Persist the clip's real duration once the player reports it. Recordings
-  // are inserted before the player loads, so the row's duration_ms starts
-  // null (the library card shows 0:00); this also backfills older rows the
-  // first time they're played. Runs once per screen.
+  const handleOpenTrim = useCallback(() => {
+    playback.pause();
+    openTrim();
+  }, [playback, openTrim]);
+
+  // Backfill a LIBRARY video's duration the first time it's played — older
+  // rows (and queue-inserted ones) can have a null duration_ms and show
+  // 0:00 in the grid. Local saves store the duration at insert, so this is
+  // scoped to `videoId` sources and runs once.
   const durationSyncedRef = useRef(false);
   useEffect(() => {
     if (durationSyncedRef.current) return;
+    if (!('videoId' in params)) return;
     if (!analyzableVideoId || playback.durationMs <= 0) return;
     durationSyncedRef.current = true;
     setVideoDuration(analyzableVideoId, playback.durationMs).catch(() => {});
-  }, [analyzableVideoId, playback.durationMs]);
+  }, [analyzableVideoId, playback.durationMs, params]);
 
   // Surface a one-off toast if the pose pre-compute fails (e.g. the clip
   // couldn't be downloaded for analysis).
@@ -201,10 +238,7 @@ export function PlaybackScreen({
   // ─── Body branches ────────────────────────────────────────────────────
   if (source.error) {
     return (
-      <PlaybackErrorView
-        message={source.error.message}
-        onBack={handleBack}
-      />
+      <PlaybackErrorView message={source.error.message} onBack={handleBack} />
     );
   }
 
@@ -265,7 +299,7 @@ export function PlaybackScreen({
       </View>
 
       <PlaybackChrome
-        visible={playback.chromeVisible}
+        visible={playback.chromeVisible && !trimOpen}
         title={title}
         subtitle={subtitle}
         onBack={handleBack}
@@ -283,6 +317,7 @@ export function PlaybackScreen({
         poseEnabled={poseEnabled}
         onTogglePose={handleTogglePose}
         onAnalyse={analyzableVideoId ? handleAnalyse : undefined}
+        extraBottomInset={isReview && !trimOpen ? REVIEW_BAR_INSET : 0}
       >
         <DrawingToolbar
           tool={drawing.tool}
@@ -296,13 +331,86 @@ export function PlaybackScreen({
         />
       </PlaybackChrome>
 
-      {uploadStatus.kind === 'uploading' || uploadStatus.kind === 'failed' ? (
-        <UploadStatusPill status={uploadStatus} visible={playback.chromeVisible} />
+      {/* Review actions (recordings + imports, pre-save). Persistent so
+          Save is always reachable; replaced by the TrimBar while trimming. */}
+      {isReview && !trimOpen ? (
+        <View style={styles.bottomDock}>
+          <ReviewActionBar
+            hasTrim={hasTrim}
+            saving={isSaving}
+            onTrim={handleOpenTrim}
+            onSave={handleSave}
+          />
+        </View>
+      ) : null}
+
+      {isReview && trimOpen ? (
+        <View style={styles.bottomDock}>
+          <TrimBar
+            durationMs={playback.durationMs}
+            thumbnails={trimThumbs}
+            thumbsStatus={trimThumbsStatus}
+            initialRange={trimRange}
+            minDurationMs={trimMin}
+            onSeekMs={playback.seekMs}
+            onCancel={closeTrim}
+            onApply={commitTrim}
+          />
+        </View>
       ) : null}
 
       {poseTrack.status === 'analyzing' ? (
         <PoseAnalyzingOverlay elapsedSec={poseTrack.elapsedSec} />
       ) : null}
+    </View>
+  );
+}
+
+// ───── Subviews ──────────────────────────────────────────────────────────
+
+interface ReviewActionBarProps {
+  hasTrim: boolean;
+  saving: boolean;
+  onTrim: () => void;
+  onSave: () => void;
+}
+
+function ReviewActionBar({
+  hasTrim,
+  saving,
+  onTrim,
+  onSave,
+}: ReviewActionBarProps) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[styles.reviewBar, { paddingBottom: insets.bottom + spacing[3] }]}
+    >
+      <Pressable
+        onPress={onTrim}
+        disabled={saving}
+        accessibilityRole="button"
+        accessibilityLabel={hasTrim ? 'Edit trim' : 'Trim swing'}
+        style={styles.trimBtn}
+        hitSlop={6}
+      >
+        <ScissorsIcon active={hasTrim} />
+        <Text
+          style={[styles.trimBtnLabel, hasTrim && styles.trimBtnLabelActive]}
+        >
+          {hasTrim ? 'Edit trim' : 'Trim'}
+        </Text>
+      </Pressable>
+      <View style={styles.saveWrap}>
+        <Button
+          label="Save to library"
+          variant="primary"
+          onPress={onSave}
+          loading={saving}
+          shadow
+          fullWidth
+        />
+      </View>
     </View>
   );
 }
@@ -318,40 +426,6 @@ function PoseAnalyzingOverlay({ elapsedSec }: PoseAnalyzingOverlayProps) {
         <ActivityIndicator size="small" color={colors.gold.default} />
         <Text style={styles.analyzeLabel}>Analyzing pose…</Text>
         <Text style={styles.analyzeSub}>{elapsedSec}s</Text>
-      </View>
-    </View>
-  );
-}
-
-// ───── Subviews ──────────────────────────────────────────────────────────
-
-interface UploadStatusPillProps {
-  status: UploadStatus;
-  visible: boolean;
-}
-
-function UploadStatusPill({ status, visible }: UploadStatusPillProps) {
-  const insets = useSafeAreaInsets();
-  if (!visible || status.kind === 'idle' || status.kind === 'uploaded') return null;
-  const label =
-    status.kind === 'uploading' ? 'Uploading…' : 'Upload failed';
-  return (
-    <View
-      style={[
-        styles.pillWrap,
-        { top: insets.top + spacing[12] + spacing[2] },
-      ]}
-      pointerEvents="none"
-    >
-      <View style={styles.pill}>
-        {status.kind === 'uploading' ? (
-          <ActivityIndicator
-            size="small"
-            color={colors.gold.default}
-            style={styles.pillSpinner}
-          />
-        ) : null}
-        <Text style={styles.pillLabel}>{label}</Text>
       </View>
     </View>
   );
@@ -393,6 +467,42 @@ function PlaybackLoadingView({ onBack }: PlaybackLoadingViewProps) {
   );
 }
 
+// ───── Icons ─────────────────────────────────────────────────────────────
+
+// Scissors — standard two-ring scissors (trim isn't in the Design bundle,
+// so this is a clean stock glyph, not a substituted design icon). Gold
+// when a trim is applied, neutral otherwise.
+function ScissorsIcon({ active }: { active: boolean }) {
+  const stroke = active ? colors.gold.default : colors.text.primary;
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Circle cx={6} cy={6} r={3} stroke={stroke} strokeWidth={2} />
+      <Circle cx={6} cy={18} r={3} stroke={stroke} strokeWidth={2} />
+      <Path
+        d="M20 4L8.12 15.88"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M14.47 14.48L20 20"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8.12 8.12L12 12"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // ───── Styles ────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -430,30 +540,40 @@ const styles = StyleSheet.create({
     ...typography.bodyStrong,
     color: colors.text.primary,
   },
-  pillWrap: {
+  bottomDock: {
     position: 'absolute',
     left: 0,
     right: 0,
-    alignItems: 'center',
+    bottom: 0,
   },
-  pill: {
+  reviewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingTop: spacing[3],
+    paddingHorizontal: layout.screenPaddingH,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  trimBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    height: 30,
-    paddingHorizontal: spacing[3],
-    borderRadius: 999,
-    backgroundColor: 'rgba(20,20,20,0.65)',
+    height: 48,
+    paddingHorizontal: spacing[4],
+    borderRadius: layout.borderRadius.full,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: colors.border.default,
+    backgroundColor: 'rgba(20,20,20,0.65)',
   },
-  pillSpinner: {
-    marginLeft: -spacing[1],
-  },
-  pillLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  trimBtnLabel: {
+    ...typography.bodyStrong,
     color: colors.text.primary,
+  },
+  trimBtnLabelActive: {
+    color: colors.gold.text,
+  },
+  saveWrap: {
+    flex: 1,
   },
   analyzeWrap: {
     position: 'absolute',

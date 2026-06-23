@@ -14,7 +14,8 @@
  * surfaces a Toast; empty (no swings) → a record-prompt placeholder.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Pressable,
@@ -28,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ProGate, Skeleton, Toast } from '@/components/ui';
 import { ImportConfirmSheet } from '@/features/library/components/ImportConfirmSheet';
+import type { ImportConfirmMetadata } from '@/features/library/components/ImportConfirmSheet';
 import { useImportVideo } from '@/features/library/hooks/useImportVideo';
 import { CameraIcon } from '@/features/home/components/HomeIcons';
 import { HomeCoachingCard } from '@/features/home/components/HomeCoachingCard';
@@ -47,7 +49,37 @@ export function HomeScreen({ navigation }: AppTabsScreenProps<'HomeTab'>) {
   const insets = useSafeAreaInsets();
   const dashboard = useHomeDashboard();
   const { isPro } = useSubscription();
-  const importer = useImportVideo({ onUploadComplete: dashboard.refresh });
+
+  // Imported clips route to the PlaybackScreen for review / trim / Save
+  // (same path as recordings); the upload happens there.
+  const handleImportReview = useCallback(
+    (uri: string, meta: ImportConfirmMetadata) => {
+      navigation.navigate('Playback', {
+        localUri: uri,
+        angle: meta.angle,
+        clubType: meta.club,
+        swingHand: meta.swingHand,
+      });
+    },
+    [navigation],
+  );
+  const importer = useImportVideo({ onReview: handleImportReview });
+
+  // Refresh the dashboard on focus after the first mount so a swing saved
+  // on the PlaybackScreen (recording or import) is reflected on return.
+  const didMountRef = useRef(false);
+  const refreshDashboard = dashboard.refresh;
+  useFocusEffect(
+    useCallback(() => {
+      if (!didMountRef.current) {
+        didMountRef.current = true;
+        return;
+      }
+      refreshDashboard().catch(() => {
+        // Errors surface via the dashboard's error state.
+      });
+    }, [refreshDashboard]),
+  );
 
   // __DEV__-only Pro toggle so the coaching-vs-gate states are verifiable on
   // the simulator without a sandbox purchase (mirrors LibraryScreen's seed).
@@ -213,7 +245,6 @@ export function HomeScreen({ navigation }: AppTabsScreenProps<'HomeTab'>) {
       <ImportConfirmSheet
         visible={importer.sheet.visible}
         defaultClub={importer.sheet.defaultClub}
-        isUploading={importer.sheet.isUploading}
         onConfirm={importer.sheet.onConfirm}
         onDismiss={importer.sheet.onDismiss}
       />

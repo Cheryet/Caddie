@@ -1,6 +1,8 @@
 PODS:
   - CaddiePose (0.0.1):
     - React-Core
+  - CaddieTrim (0.0.1):
+    - React-Core
   - FBLazyVector (0.86.0)
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
@@ -2609,6 +2611,7 @@ PODS:
 
 DEPENDENCIES:
   - CaddiePose (from `../node_modules/caddie-pose`)
+  - CaddieTrim (from `../node_modules/caddie-trim`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - NitroImage (from `../node_modules/react-native-nitro-image`)
@@ -2716,6 +2719,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   CaddiePose:
     :path: "../node_modules/caddie-pose"
+  CaddieTrim:
+    :path: "../node_modules/caddie-trim"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2912,6 +2917,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   CaddiePose: ed9237172cc2134e14c58d88db3216f9ca232ecd
+  CaddieTrim: 20e1f2acb3908599f33e8b5ffed50b3a8cd4ca6a
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: c61ada8e42048d86b89156f4c972bf17b7564363
   MMKVCore: 3d16ce9f7d411e135020915fde98a056859a1efa

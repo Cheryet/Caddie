@@ -42,6 +42,14 @@ export interface UploadRecordingInput {
   clubType: string;
   userId: string;
   /**
+   * Known clip duration in ms, stored on the row at insert time. The
+   * PlaybackScreen Save flow knows this (trimmed length, or the player's
+   * loaded duration) so the library card shows the right badge straight
+   * away instead of 0:00. Omitted by the queue drain (no player there) —
+   * those rows are backfilled on first play.
+   */
+  durationMs?: number;
+  /**
    * If true (queue retries), DON'T re-enqueue on failure — the caller is
    * already handling the retry loop and would create a duplicate job.
    */
@@ -162,6 +170,9 @@ export async function uploadRecording(
     camera_angle: input.angle,
     swing_hand: input.swingHand,
     club_type: input.clubType,
+    ...(input.durationMs && input.durationMs > 0
+      ? { duration_ms: Math.round(input.durationMs) }
+      : {}),
   });
   if (insertError) {
     return finalize(input, {

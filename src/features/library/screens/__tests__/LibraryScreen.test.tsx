@@ -18,6 +18,12 @@ import type { Video } from '@/features/library/hooks/useVideos';
 // mutable state lives inside the factory and the tests pull it out via
 // `__state` on the mocked module.
 
+// @react-navigation/native ships ESM that jest doesn't transform; the
+// screen only needs useFocusEffect, stubbed as a no-op here.
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: jest.fn(),
+}));
+
 jest.mock('@/features/library/hooks/useVideos', () => {
   const state = {
     videos: null as Video[] | null,

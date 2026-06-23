@@ -1,8 +1,9 @@
 /**
  * useImportVideo — Hook tests
- * Drives every branch through the renderHook + act pattern: picker
- * outcomes (success / cancel / too_long), sheet open/close, and the
- * upload happy and failure paths.
+ * Drives every branch through renderHook + act: picker outcomes
+ * (success / cancel / too_long), the overlay present-delay, and the
+ * confirm hand-off to `onReview` (the upload now happens on the
+ * PlaybackScreen, so confirm just routes there — no upload here).
  */
 
 import { act, renderHook, waitFor } from '@testing-library/react-native';
@@ -11,10 +12,6 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 jest.mock('@/utils/picker', () => ({
   pickVideo: jest.fn(),
-}));
-
-jest.mock('@/utils/upload', () => ({
-  uploadRecording: jest.fn(),
 }));
 
 jest.mock('@/utils/lastClub', () => ({
@@ -27,14 +24,9 @@ jest.mock('@/components/ui', () => {
   return { Toast: { show }, __toast: { show } };
 });
 
-jest.mock('@/store/useAppStore', () => ({
-  useAppStore: <T,>(selector: (s: { user: { id: string } | null }) => T): T =>
-    selector({ user: { id: 'user-1' } }),
-}));
-
 const { pickVideo } = require('@/utils/picker') as { pickVideo: jest.Mock };
-const { uploadRecording } = require('@/utils/upload') as {
-  uploadRecording: jest.Mock;
+const { setLastClub } = require('@/utils/lastClub') as {
+  setLastClub: jest.Mock;
 };
 const { __toast } = require('@/components/ui') as {
   __toast: { show: jest.Mock };
@@ -67,7 +59,9 @@ describe('useImportVideo', () => {
       error: null,
     });
 
-    const { result } = renderHook(() => useImportVideo());
+    const { result } = renderHook(() =>
+      useImportVideo({ onReview: jest.fn() }),
+    );
     let startPromise!: Promise<void>;
     act(() => {
       startPromise = result.current.start();
@@ -88,7 +82,9 @@ describe('useImportVideo', () => {
       error: { code: 'cancelled', message: 'Picker dismissed.' },
     });
 
-    const { result } = renderHook(() => useImportVideo());
+    const { result } = renderHook(() =>
+      useImportVideo({ onReview: jest.fn() }),
+    );
     await act(async () => {
       await result.current.start();
     });
@@ -103,7 +99,9 @@ describe('useImportVideo', () => {
       error: { code: 'too_long', message: 'Pick a swing under 60 seconds.' },
     });
 
-    const { result } = renderHook(() => useImportVideo());
+    const { result } = renderHook(() =>
+      useImportVideo({ onReview: jest.fn() }),
+    );
     await act(async () => {
       await result.current.start();
     });
@@ -114,15 +112,14 @@ describe('useImportVideo', () => {
     );
   });
 
-  it('uploads on confirm and toasts success', async () => {
+  it('hands the clip to onReview on confirm (no upload) and closes the sheet', async () => {
     pickVideo.mockResolvedValueOnce({
       data: { uri: 'file:///tmp/swing.mov', durationSec: 5, fileName: 'a.mov' },
       error: null,
     });
-    uploadRecording.mockResolvedValueOnce({ data: { videoId: 'vid' }, error: null });
-    const onUploadComplete = jest.fn();
+    const onReview = jest.fn();
 
-    const { result } = renderHook(() => useImportVideo({ onUploadComplete }));
+    const { result } = renderHook(() => useImportVideo({ onReview }));
     let startPromise!: Promise<void>;
     act(() => {
       startPromise = result.current.start();
@@ -131,25 +128,20 @@ describe('useImportVideo', () => {
     await act(async () => {
       await startPromise;
     });
-    await act(async () => {
-      await result.current.sheet.onConfirm({
+    act(() => {
+      result.current.sheet.onConfirm({
         angle: 'face-on',
         swingHand: 'right',
         club: '7 Iron',
       });
     });
 
-    expect(uploadRecording).toHaveBeenCalledWith(
-      expect.objectContaining({
-        localUri: 'file:///tmp/swing.mov',
-        userId: 'user-1',
-        clubType: '7 Iron',
-      }),
-    );
-    expect(toastShow).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'success' }),
-    );
-    expect(onUploadComplete).toHaveBeenCalled();
+    expect(onReview).toHaveBeenCalledWith('file:///tmp/swing.mov', {
+      angle: 'face-on',
+      swingHand: 'right',
+      club: '7 Iron',
+    });
+    expect(setLastClub).toHaveBeenCalledWith('7 Iron');
     await waitFor(() => expect(result.current.sheet.visible).toBe(false));
   });
 
@@ -165,19 +157,19 @@ describe('useImportVideo', () => {
       }),
     );
 
-    const { result } = renderHook(() => useImportVideo());
+    const { result } = renderHook(() =>
+      useImportVideo({ onReview: jest.fn() }),
+    );
     expect(result.current.isProcessing).toBe(false);
 
     let startPromise!: Promise<void>;
     act(() => {
       startPromise = result.current.start();
     });
-    // Right after start: overlay is still hidden (delay timer hasn't
-    // fired). This is the window where PHPicker is animating in.
+    // Right after start: overlay is still hidden (delay timer hasn't fired).
     expect(result.current.isProcessing).toBe(false);
 
-    // Advance past the present-delay. Overlay flips to true so the
-    // moment PHPicker dismisses, it'll be visible.
+    // Advance past the present-delay. Overlay flips to true.
     act(() => {
       jest.advanceTimersByTime(2100);
     });
@@ -202,7 +194,9 @@ describe('useImportVideo', () => {
       error: null,
     });
 
-    const { result } = renderHook(() => useImportVideo());
+    const { result } = renderHook(() =>
+      useImportVideo({ onReview: jest.fn() }),
+    );
     let startPromise!: Promise<void>;
     act(() => {
       startPromise = result.current.start();
@@ -213,37 +207,5 @@ describe('useImportVideo', () => {
     });
     expect(result.current.isProcessing).toBe(false);
     expect(result.current.sheet.visible).toBe(true);
-  });
-
-  it('shows an error toast when upload fails', async () => {
-    pickVideo.mockResolvedValueOnce({
-      data: { uri: 'file:///tmp/swing.mov', durationSec: 5, fileName: 'a.mov' },
-      error: null,
-    });
-    uploadRecording.mockResolvedValueOnce({
-      data: null,
-      error: { code: 'network', message: 'offline' },
-    });
-
-    const { result } = renderHook(() => useImportVideo());
-    let startPromise!: Promise<void>;
-    act(() => {
-      startPromise = result.current.start();
-    });
-    await runDwell();
-    await act(async () => {
-      await startPromise;
-    });
-    await act(async () => {
-      await result.current.sheet.onConfirm({
-        angle: 'face-on',
-        swingHand: 'right',
-        club: '7 Iron',
-      });
-    });
-
-    expect(toastShow).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'error' }),
-    );
   });
 });

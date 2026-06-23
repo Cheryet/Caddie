@@ -1,8 +1,8 @@
 /**
  * ImportConfirmSheet — component tests
- * Verifies the sheet renders the three swing-meta controls, the
- * primary CTA fires onConfirm with the current metadata, and the
- * loading state disables the CTA.
+ * Verifies the sheet renders the swing-meta controls and the primary CTA
+ * fires onConfirm with the current metadata (the caller then routes to
+ * the PlaybackScreen for review / trim / Save).
  */
 
 import { fireEvent, render } from '@testing-library/react-native';
@@ -27,7 +27,6 @@ function wrap(ui: ReactElement) {
 const defaultProps = {
   visible: true,
   defaultClub: '7 Iron' as const,
-  isUploading: false,
   onConfirm: jest.fn(),
   onDismiss: jest.fn(),
 };
@@ -47,7 +46,7 @@ describe('ImportConfirmSheet', () => {
     const { getByText } = wrap(
       <ImportConfirmSheet {...defaultProps} onConfirm={onConfirm} />,
     );
-    fireEvent.press(getByText('Use this swing'));
+    fireEvent.press(getByText('Continue'));
     expect(onConfirm).toHaveBeenCalledWith({
       angle: 'face-on',
       swingHand: 'right',
@@ -62,7 +61,7 @@ describe('ImportConfirmSheet', () => {
     );
     fireEvent.press(getByText('DTL'));
     fireEvent.press(getByText('Left'));
-    fireEvent.press(getByText('Use this swing'));
+    fireEvent.press(getByText('Continue'));
     expect(onConfirm).toHaveBeenCalledWith({
       angle: 'dtl',
       swingHand: 'left',

@@ -21,6 +21,7 @@
     "@shopify/flash-list": "^2.3.2",
     "@supabase/supabase-js": "^2.108.1",
     "caddie-pose": "file:packages/caddie-pose",
+    "caddie-trim": "file:packages/caddie-trim",
     "date-fns": "^4.4.0",
     "react": "19.2.3",
     "react-native": "0.86.0",

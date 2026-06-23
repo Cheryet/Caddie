@@ -37,7 +37,6 @@ export interface ImportConfirmMetadata {
 interface ImportConfirmSheetProps {
   visible: boolean;
   defaultClub: ClubType;
-  isUploading: boolean;
   onConfirm: (meta: ImportConfirmMetadata) => void;
   onDismiss: () => void;
 }
@@ -45,7 +44,6 @@ interface ImportConfirmSheetProps {
 export function ImportConfirmSheet({
   visible,
   defaultClub,
-  isUploading,
   onConfirm,
   onDismiss,
 }: ImportConfirmSheetProps) {
@@ -77,13 +75,11 @@ export function ImportConfirmSheet({
 
       <View style={styles.cta}>
         <Button
-          label="Use this swing"
+          label="Continue"
           onPress={() => onConfirm({ angle, swingHand, club })}
           variant="primary"
           size="lg"
           shadow
-          loading={isUploading}
-          disabled={isUploading}
           fullWidth
         />
       </View>

@@ -57,6 +57,9 @@ interface PlaybackChromeProps {
   // recording after its background upload completes). Omitted otherwise so
   // we never offer analysis on a swing that isn't saved yet.
   onAnalyse?: () => void;
+  /** Extra bottom padding for the controls so they clear a persistent
+   *  bar below the chrome (the review-mode Save/Trim bar). Default 0. */
+  extraBottomInset?: number;
   /** Optional overlay rendered inside the chrome's fade region. Used
    *  by Phase 2.2's DrawingToolbar so it auto-hides with the chrome. */
   children?: ReactNode;
@@ -83,6 +86,7 @@ export function PlaybackChrome({
   poseEnabled = false,
   onTogglePose,
   onAnalyse,
+  extraBottomInset = 0,
   children,
 }: PlaybackChromeProps) {
   const insets = useSafeAreaInsets();
@@ -215,7 +219,7 @@ export function PlaybackChrome({
       <View
         style={[
           styles.bottomScrim,
-          { paddingBottom: insets.bottom + spacing[6] },
+          { paddingBottom: insets.bottom + spacing[6] + extraBottomInset },
         ]}
         pointerEvents="box-none"
       >

@@ -6,7 +6,7 @@
  * and that the upload fires in the background for fresh recordings.
  */
 
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -63,6 +63,27 @@ jest.mock('@/utils/upload', () => ({
     error: null,
   }),
   setVideoDuration: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Trim hook + bar are mocked: the hook gives a controllable, no-op trim
+// state, and the bar is stubbed so the test never pulls gesture-handler.
+jest.mock('@/features/trimming/hooks/useTrim', () => {
+  const state = {
+    isOpen: false,
+    range: null,
+    hasTrim: false,
+    thumbnails: [] as string[],
+    thumbsStatus: 'idle',
+    minDurationMs: 800,
+    open: jest.fn(),
+    close: jest.fn(),
+    commit: jest.fn(),
+    materialize: jest.fn(async (uri: string) => ({ uri, durationMs: null })),
+  };
+  return { useTrim: () => state, __trim: state };
+});
+jest.mock('@/features/trimming/components/TrimBar', () => ({
+  TrimBar: () => null,
 }));
 
 jest.mock('@/store/useAppStore', () => ({
@@ -226,9 +247,9 @@ describe('PlaybackScreen', () => {
     expect(nav.goBack).toHaveBeenCalled();
   });
 
-  it('kicks off upload when route has localUri', async () => {
+  it('does NOT upload on mount for a localUri; shows Save + Trim review actions', () => {
     const nav = makeNav();
-    wrap(
+    const { getByText } = wrap(
       <PlaybackScreen
         navigation={nav}
         route={{
@@ -243,12 +264,38 @@ describe('PlaybackScreen', () => {
         }}
       />,
     );
-    // Effect schedules the upload synchronously.
+    // Deferred-save flow: nothing uploads until the user taps Save.
+    expect(uploadRecording).not.toHaveBeenCalled();
+    expect(getByText('Save to library')).toBeTruthy();
+    expect(getByText('Trim')).toBeTruthy();
+  });
+
+  it('uploads (with duration) when Save to library is tapped', async () => {
+    const nav = makeNav();
+    const { getByText } = wrap(
+      <PlaybackScreen
+        navigation={nav}
+        route={{
+          key: 'k',
+          name: 'Playback',
+          params: {
+            localUri: 'file:///tmp/swing.mov',
+            angle: 'face-on',
+            clubType: '7 Iron',
+            swingHand: 'right',
+          },
+        }}
+      />,
+    );
+    fireEvent.press(getByText('Save to library'));
+    await waitFor(() => expect(uploadRecording).toHaveBeenCalled());
     expect(uploadRecording).toHaveBeenCalledWith(
       expect.objectContaining({
         localUri: 'file:///tmp/swing.mov',
         clubType: '7 Iron',
         userId: 'user-1',
+        // No trim range → falls back to the player's loaded duration (5000).
+        durationMs: 5000,
       }),
     );
   });

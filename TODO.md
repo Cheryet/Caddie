@@ -1011,10 +1011,24 @@ in the analyze flow; pass `frames` to the Edge Function and feed
 
 ---
 
-## Future feature — Video trim / clip-to-swing
+## Video trim / clip-to-swing
 
-**Status:** Not scoped to any current phase. Captured as a user
-suggestion worth doing.
+**Status:** ✅ Shipped (post-Phase 5.5 polish). Recordings + imports open
+on the PlaybackScreen in REVIEW mode; a **Trim** button opens a
+filmstrip + drag-handle TrimBar, and **Save to library** trims (once,
+on save) then uploads — so only the swing is stored. Built on an
+AVFoundation Obj-C bridge (`packages/caddie-trim` → `src/core/trim`,
+mirrors caddie-pose), with the trim UI in `src/features/trimming`. The
+filmstrip reuses `@/core/pose`'s `extractFrameJpegs`.
+
+**Deferred:**
+- **Library re-trim** — already-uploaded (`videoId`) clips can't be
+  re-trimmed yet (would need download → trim → re-upload/replace). Trim
+  is hidden for library sources; scoped to recordings + imports for now.
+- **Hard max length** — only a min trim length is enforced; clips are
+  already ≤60s from capture/import. A ≤15s analysis cap could be added.
+
+Original scoping notes (kept for reference):
 
 **Why it matters** (more than just UX polish):
 
