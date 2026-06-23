@@ -19,6 +19,8 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { AnalysisScreen } from '@/features/analysis/screens/AnalysisScreen';
 import { CameraScreen } from '@/features/camera/screens/CameraScreen';
 import { ComparisonScreen } from '@/features/comparison/screens/ComparisonScreen';
+import { OnboardingScreen } from '@/features/onboarding/screens/OnboardingScreen';
+import { useIsOnboarded } from '@/features/onboarding/onboardingStore';
 import { PlaybackScreen } from '@/features/playback/screens/PlaybackScreen';
 import { useAppStore } from '@/store/useAppStore';
 import { colors } from '@/theme';
@@ -49,7 +51,10 @@ const navTheme = {
 
 export function RootNavigator() {
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  const isAuthenticated = useAppStore(s => Boolean(s.user));
+  const userId = useAppStore(s => s.user?.id ?? null);
+  const isAuthenticated = userId !== null;
+  // Reactive: completing setup flips this and swaps Onboarding → Tabs.
+  const onboarded = useIsOnboarded(userId);
 
   if (isAuthLoading) {
     return <Splash />;
@@ -58,7 +63,11 @@ export function RootNavigator() {
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {!isAuthenticated ? (
+          <Stack.Screen name="AuthStack" component={AuthNavigator} />
+        ) : !onboarded ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        ) : (
           <>
             <Stack.Screen name="Tabs" component={AppNavigator} />
             <Stack.Group
@@ -72,8 +81,6 @@ export function RootNavigator() {
               <Stack.Screen name="Comparison" component={ComparisonScreen} />
             </Stack.Group>
           </>
-        ) : (
-          <Stack.Screen name="AuthStack" component={AuthNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

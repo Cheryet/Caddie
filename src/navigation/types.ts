@@ -66,6 +66,7 @@ export type PlaybackParams =
 
 export type RootStackParamList = {
   AuthStack: NavigatorScreenParams<AuthStackParamList>;
+  Onboarding: undefined;
   Tabs: NavigatorScreenParams<AppTabsParamList>;
   Camera: undefined;
   Playback: PlaybackParams;

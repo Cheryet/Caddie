@@ -41,6 +41,13 @@ export interface ProfileError {
   message: string;
 }
 
+/** Subset of `profiles` columns ProfileScreen / Onboarding can write. */
+export interface ProfileUpdate {
+  displayName?: string;
+  swingHand?: SwingHand;
+  skillLevel?: string;
+}
+
 interface UseProfileReturn {
   displayName: string | null;
   username: string | null;
@@ -50,6 +57,8 @@ interface UseProfileReturn {
   skillLevel: string | null;
   isLoading: boolean;
   error: ProfileError | null;
+  /** Write any subset of editable fields; true on success. */
+  updateProfile: (fields: ProfileUpdate) => Promise<boolean>;
   updateSwingHand: (hand: SwingHand) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -130,31 +139,64 @@ export function useProfile(): UseProfileReturn {
     });
   }, [isAuthLoading, fetchProfile]);
 
-  const updateSwingHand = useCallback(
-    async (hand: SwingHand): Promise<void> => {
-      if (!userId) return;
-      const previous = swingHandRef.current;
-      if (hand === previous) return;
+  const updateProfile = useCallback(
+    async (fields: ProfileUpdate): Promise<boolean> => {
+      if (!userId) return false;
 
-      // Optimistic: state + capture mirror.
-      setSwingHand(hand);
-      setDefaultSwingHand(hand);
+      const payload: {
+        display_name?: string;
+        swing_hand?: string;
+        skill_level?: string;
+      } = {};
+      if (fields.displayName !== undefined) payload.display_name = fields.displayName;
+      if (fields.swingHand !== undefined) payload.swing_hand = fields.swingHand;
+      if (fields.skillLevel !== undefined) payload.skill_level = fields.skillLevel;
+      if (Object.keys(payload).length === 0) return true;
+
+      // Optimistic local update (+ capture mirror for hand); snapshot to revert.
+      const prev = {
+        displayName,
+        swingHand: swingHandRef.current,
+        skillLevel,
+      };
+      if (fields.displayName !== undefined) setDisplayName(fields.displayName);
+      if (fields.swingHand !== undefined) {
+        setSwingHand(fields.swingHand);
+        setDefaultSwingHand(fields.swingHand);
+      }
+      if (fields.skillLevel !== undefined) setSkillLevel(fields.skillLevel);
 
       const { error: dbError } = await supabase
         .from('profiles')
-        .update({ swing_hand: hand })
+        .update(payload)
         .eq('id', userId);
 
-      if (dbError && aliveRef.current) {
-        setSwingHand(previous);
-        setDefaultSwingHand(previous);
-        Toast.show({
-          message: 'Could not save dominant hand. Try again.',
-          variant: 'error',
-        });
+      if (dbError) {
+        if (aliveRef.current) {
+          setDisplayName(prev.displayName);
+          if (fields.swingHand !== undefined) {
+            setSwingHand(prev.swingHand);
+            setDefaultSwingHand(prev.swingHand);
+          }
+          setSkillLevel(prev.skillLevel);
+          Toast.show({
+            message: 'Could not save your profile. Try again.',
+            variant: 'error',
+          });
+        }
+        return false;
       }
+      return true;
     },
-    [userId],
+    [userId, displayName, skillLevel],
+  );
+
+  const updateSwingHand = useCallback(
+    async (hand: SwingHand): Promise<void> => {
+      if (hand === swingHandRef.current) return;
+      await updateProfile({ swingHand: hand });
+    },
+    [updateProfile],
   );
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -170,6 +212,7 @@ export function useProfile(): UseProfileReturn {
     skillLevel,
     isLoading,
     error,
+    updateProfile,
     updateSwingHand,
     refresh,
   };
