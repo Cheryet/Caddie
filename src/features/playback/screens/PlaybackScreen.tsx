@@ -38,6 +38,7 @@ import { useShareSwing } from '@/features/playback/hooks/useShareSwing';
 import { PoseOverlay } from '@/features/pose/components/PoseOverlay';
 import { usePoseTrack } from '@/features/pose/hooks/usePoseTrack';
 import { usePoseStatus } from '@/features/pose/hooks/usePoseStatus';
+import { useSubscription } from '@/features/subscription/hooks/useSubscription';
 import { TrimBar } from '@/features/trimming/components/TrimBar';
 import { useTrim } from '@/features/trimming/hooks/useTrim';
 import type { MaterializedClip } from '@/features/trimming/hooks/useTrim';
@@ -56,6 +57,7 @@ export function PlaybackScreen({
   route,
 }: RootStackScreenProps<'Playback'>) {
   const userId = useAppStore(s => s.user?.id ?? null);
+  const { isPro } = useSubscription();
   const params = route.params;
   const source = useVideoSource(params);
   const playerRef = useRef<VideoPlayerHandle>(null);
@@ -317,6 +319,7 @@ export function PlaybackScreen({
         poseEnabled={poseEnabled}
         onTogglePose={handleTogglePose}
         onAnalyse={analyzableVideoId ? handleAnalyse : undefined}
+        analyseIsPro={isPro}
         extraBottomInset={isReview && !trimOpen ? REVIEW_BAR_INSET : 0}
       >
         <DrawingToolbar

@@ -91,6 +91,12 @@ jest.mock('@/store/useAppStore', () => ({
     selector({ user: { id: 'user-1' } }),
 }));
 
+// Free user → the Analyse pill renders its PRO lure. Mocked so the test
+// never reaches RevenueCat.
+jest.mock('@/features/subscription/hooks/useSubscription', () => ({
+  useSubscription: () => ({ isPro: false, refresh: jest.fn() }),
+}));
+
 jest.mock('@/components/ui', () => {
   const React = require('react');
   const { Pressable, Text } = require('react-native');

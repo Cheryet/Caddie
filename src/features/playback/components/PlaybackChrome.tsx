@@ -24,7 +24,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path, Polyline, Rect } from 'react-native-svg';
 
-import { Button } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 import { PLAYBACK_RATES, type PlaybackRate } from '@/features/playback/hooks/usePlayback';
 
@@ -57,6 +56,9 @@ interface PlaybackChromeProps {
   // recording after its background upload completes). Omitted otherwise so
   // we never offer analysis on a swing that isn't saved yet.
   onAnalyse?: () => void;
+  /** Whether the viewer is Pro. When false the Analyse pill carries a
+   *  small "PRO" lure so free users see it as a premium upsell. */
+  analyseIsPro?: boolean;
   /** Extra bottom padding for the controls so they clear a persistent
    *  bar below the chrome (the review-mode Save/Trim bar). Default 0. */
   extraBottomInset?: number;
@@ -86,6 +88,7 @@ export function PlaybackChrome({
   poseEnabled = false,
   onTogglePose,
   onAnalyse,
+  analyseIsPro = true,
   extraBottomInset = 0,
   children,
 }: PlaybackChromeProps) {
@@ -215,6 +218,29 @@ export function PlaybackChrome({
         </Pressable>
       ) : null}
 
+      {/* Analyse with AI — the screen's single gold element, moved out of
+          the bottom-centre (where it blocked drawing) into a top-right pill
+          that mirrors the pose pill. Stays a constant temptation; for free
+          users it wears a "PRO" tag and tapping routes into the upgrade
+          gate (AnalysisScreen's ProGate). */}
+      {onAnalyse ? (
+        <Pressable
+          onPress={onAnalyse}
+          accessibilityRole="button"
+          accessibilityLabel="Analyse with AI"
+          hitSlop={8}
+          style={[styles.analysePill, { top: insets.top + POSE_PILL_TOP }]}
+        >
+          <AnalyseSparkleIcon />
+          <Text style={styles.analysePillLabel}>Analyse with AI</Text>
+          {!analyseIsPro ? (
+            <View style={styles.proChip}>
+              <Text style={styles.proChipLabel}>PRO</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      ) : null}
+
       {/* Bottom scrim + controls */}
       <View
         style={[
@@ -223,22 +249,6 @@ export function PlaybackChrome({
         ]}
         pointerEvents="box-none"
       >
-        {/* Analyse with AI — the playback screen's single gold element
-            (design §02). Reuses the Button primitive (one-Button rule);
-            its radius is the app-standard rounded-rect, not the mock's
-            full pill. */}
-        {onAnalyse ? (
-          <View style={styles.analyseRow}>
-            <Button
-              label="Analyse with AI"
-              variant="primary"
-              onPress={onAnalyse}
-              shadow
-              icon={<AnalyseSparkleIcon />}
-            />
-          </View>
-        ) : null}
-
         {/* Transport */}
         <View style={styles.transportRow}>
           <Pressable
@@ -351,11 +361,12 @@ function formatRate(rate: PlaybackRate): string {
 // ───── Icons ─────────────────────────────────────────────────────────────
 
 // Sparkle mark for the "Analyse with AI" CTA — paths verbatim from
-// Design/Caddie Screens.dc.html §02 (line 238). Inverse-filled to read on
-// the gold button.
+// Design/Caddie Screens.dc.html §02 (line 238). Gold-filled to read on the
+// dark top-right pill (gold is reserved for this CTA — the screen's single
+// gold element).
 function AnalyseSparkleIcon() {
   return (
-    <Svg width={17} height={17} viewBox="0 0 24 24" fill={colors.text.inverse}>
+    <Svg width={15} height={15} viewBox="0 0 24 24" fill={colors.gold.default}>
       <Path d="M12 2l1.6 6.6L20 10l-6.4 1.4L12 18l-1.6-6.6L4 10l6.4-1.4z" />
       <Path d="M19 3l.7 2.3L22 6l-2.3.7L19 9l-.7-2.3L16 6l2.3-.7z" />
     </Svg>
@@ -456,9 +467,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingH,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  analyseRow: {
+  // Gold "Analyse with AI" pill, anchored top-right (mirrors posePill on
+  // the left). Gold-tinted so it reads as the screen's single gold element
+  // without the bulk of the old centre button.
+  analysePill: {
+    position: 'absolute',
+    right: layout.screenPaddingH,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing[4] + 2, // 18 — matches design
+    gap: 6,
+    height: 34,
+    paddingHorizontal: spacing[3] + 1,
+    borderRadius: layout.borderRadius.full,
+    backgroundColor: 'rgba(201,168,76,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(226,191,106,0.5)',
+  },
+  analysePillLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+    color: colors.gold.text,
+  },
+  proChip: {
+    marginLeft: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: layout.borderRadius.sm,
+    backgroundColor: colors.gold.default,
+  },
+  proChipLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    color: colors.text.inverse,
   },
   transportRow: {
     flexDirection: 'row',
