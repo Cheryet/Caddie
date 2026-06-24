@@ -4,9 +4,10 @@
  * loading, empty). Per PROJECT_SPEC.md §22 Phase 1.5: 2-col virtualized
  * grid, pull-to-refresh, skeleton loading, empty state with record CTA.
  *
- * Search input + filter chips + "Processing N swings…" banner are
- * intentionally deferred to later phases (TODO.md tracks them) so this
- * phase ships small.
+ * Search + the All / Driver / Irons / Analysed quick-filter chips are wired
+ * here, client-side over the loaded list (see libraryFilter). The advanced
+ * filter sheet (the sliders button) and the "Processing N swings…" upload
+ * banner remain deferred — TODO.md tracks them.
  *
  * Tap behaviour:
  *   "+" (header)            → ActionSheetIOS → Camera (record) | start
@@ -19,7 +20,7 @@
  *                              actual recording. Compiled out in release.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActionSheetIOS,
@@ -41,13 +42,16 @@ import { EditVideoSheet } from '@/features/library/components/EditVideoSheet';
 import { ImportConfirmSheet } from '@/features/library/components/ImportConfirmSheet';
 import type { ImportConfirmMetadata } from '@/features/library/components/ImportConfirmSheet';
 import { VideoCard } from '@/features/library/components/VideoCard';
+import { LibraryFilterBar } from '@/features/library/components/LibraryFilterBar';
 import { LibrarySkeletonCard } from '@/features/library/components/LibrarySkeletonCard';
 import { useImportVideo } from '@/features/library/hooks/useImportVideo';
 import { useVideoManagement } from '@/features/library/hooks/useVideoManagement';
 import { useVideos, type Video } from '@/features/library/hooks/useVideos';
+import { filterVideos, type LibraryFilter } from '@/features/library/libraryFilter';
 import type { LibraryStackScreenProps } from '@/navigation/types';
 import { useAppStore } from '@/store/useAppStore';
 import { colors, layout, spacing, typography } from '@/theme';
+import { useDebouncedValue } from '@/utils/useDebouncedValue';
 
 // ───── Constants ─────────────────────────────────────────────────────────
 
@@ -65,6 +69,16 @@ export function LibraryScreen({
   const userId = useAppStore(s => s.user?.id ?? null);
   const { videos, isLoading, isRefreshing, error, refresh } = useVideos();
   const [isSeeding, setIsSeeding] = useState(false);
+
+  // Client-side search + quick-filter over the loaded list (Design §04). The
+  // query is debounced so typing stays responsive on large libraries.
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<LibraryFilter>('all');
+  const debouncedQuery = useDebouncedValue(query, 200);
+  const visibleVideos = useMemo(
+    () => (videos ? filterVideos(videos, { query: debouncedQuery, filter }) : []),
+    [videos, debouncedQuery, filter],
+  );
 
   // Imported clips route to the PlaybackScreen for review / trim / Save —
   // the same path recordings take — so the upload (and trimming) happens
@@ -130,6 +144,16 @@ export function LibraryScreen({
     },
     [navigation],
   );
+
+  const onPressMoreFilters = useCallback(() => {
+    // The richer filter sheet (club/angle/date) is Phase 1.8 — TODO.md.
+    Toast.show({ message: 'More filters coming soon', variant: 'info' });
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setQuery('');
+    setFilter('all');
+  }, []);
 
   const onLongPressCard = useCallback(
     (video: Video) => {
@@ -212,6 +236,18 @@ export function LibraryScreen({
         </View>
       ) : null}
 
+      {/* Search + quick-filter chips — shown above the grid and the loading
+          skeleton, hidden only on the first-run empty state (Design §04). */}
+      {!showEmpty ? (
+        <LibraryFilterBar
+          query={query}
+          onChangeQuery={setQuery}
+          filter={filter}
+          onChangeFilter={setFilter}
+          onPressMoreFilters={onPressMoreFilters}
+        />
+      ) : null}
+
       {showInitialSkeleton ? (
         <SkeletonGrid />
       ) : showEmpty ? (
@@ -222,7 +258,7 @@ export function LibraryScreen({
         />
       ) : (
         <FlashList
-          data={videos ?? []}
+          data={visibleVideos}
           keyExtractor={item => item.id}
           numColumns={NUM_COLUMNS}
           contentContainerStyle={{
@@ -232,6 +268,13 @@ export function LibraryScreen({
           }}
           refreshing={isRefreshing}
           onRefresh={refresh}
+          ListEmptyComponent={
+            // Only when the library has rows but the filter/search hides them
+            // all — not the genuine first-run empty state above.
+            videos && videos.length > 0 ? (
+              <LibraryNoResults onClear={clearFilters} />
+            ) : null
+          }
           renderItem={({ item, index }) => (
             <View
               style={[
@@ -297,6 +340,27 @@ function ImportProcessingOverlay() {
         <ActivityIndicator color={colors.gold.default} />
         <Text style={styles.processingLabel}>Preparing video…</Text>
       </View>
+    </View>
+  );
+}
+
+// ───── Filtered-empty state ──────────────────────────────────────────────
+// Shown inside the grid when search / filters match no swing (the library
+// still has rows). Distinct from the first-run LibraryEmpty illustration.
+
+function LibraryNoResults({ onClear }: { onClear: () => void }) {
+  return (
+    <View style={styles.noResults}>
+      <Text style={styles.noResultsTitle}>No swings match</Text>
+      <Text style={styles.noResultsBody}>
+        Try a different club filter or clear your search.
+      </Text>
+      <Pressable
+        onPress={onClear}
+        accessibilityRole="button"
+        style={styles.noResultsClear}>
+        <Text style={styles.noResultsClearText}>Clear filters</Text>
+      </Pressable>
     </View>
   );
 }
@@ -542,6 +606,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.tertiary,
     textAlign: 'center',
+  },
+  // Filtered-empty state
+  noResults: {
+    alignItems: 'center',
+    paddingTop: spacing[16],
+    paddingHorizontal: spacing[8],
+  },
+  noResultsTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  noResultsBody: {
+    ...typography.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: spacing[2],
+  },
+  noResultsClear: {
+    marginTop: spacing[4],
+    height: 40,
+    paddingHorizontal: spacing[5],
+    borderRadius: layout.borderRadius.full,
+    backgroundColor: colors.bg.elevated,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsClearText: {
+    ...typography.labelStrong,
+    color: colors.text.primary,
   },
   // Import processing overlay — absolute fill inside LibraryScreen
   processingRoot: {

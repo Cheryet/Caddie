@@ -318,37 +318,35 @@ want to find out before adding capture UI on top.
 
 ---
 
-## Library — search, filter chips, processing banner (Phase 1.5 deferred)
+## Library — filter sheet + upload "processing" banner (Phase 1.5 deferred)
 
-**Status:** `LibraryScreen` ships with the §22 Phase 1.5 acceptance — a
-2-col `FlashList` grid, pull-to-refresh, skeleton loading, empty state
-with record CTA, and `VideoCard` per the §11 anatomy. Three affordances
-from `Design/Caddie Screens.dc.html` §04 are intentionally left out:
+**Status:** `LibraryScreen` ships the §22 Phase 1.5 acceptance, plus — as of
+**2026-06-24** — client-side search and the All / Driver / Irons / Analysed
+quick-filter chips from `Design/Caddie Screens.dc.html` §04. Remaining gaps:
 
-1. **Search bar** ("Search by club or date") under the header
-2. **Filter chip row** (All / Driver / Irons / Analysed) and the filter
-   modal trigger
-3. **"Processing N swings from this morning…" banner** that surfaces an
-   in-flight upload queue at the top of the loading state
+1. ~~**Search bar** ("Search by club or date")~~ — **shipped 2026-06-24**:
+   debounced `TextInput` → `filterVideos` over title/club_type
+   (`src/features/library/libraryFilter.ts` + `useDebouncedValue`).
+2. ~~**Filter chip row** (All / Driver / Irons / Analysed)~~ — **shipped
+   2026-06-24** (`LibraryFilterBar`, local `useState` + `useMemo`). The
+   sliders **"more filters" button is rendered but only toasts** — the real
+   **filter sheet** (club / angle / date) is still deferred to Phase 1.8.
+3. **"Processing N swings from this morning…" banner** surfacing an in-flight
+   upload queue at the top of the loading state — still deferred.
 
-**Why deferred:** §22 Phase 1.5 lists exactly four bullets — install
-flash-list, useVideos hook, grid+refresh+empty+skeleton, VideoCard. The
-above three are correctness for a later iteration, not Phase 1.5 scope.
-Bundling them now would mix two phases and create test/refactor churn
-when the real upload-status surfaces in Phase 1.4's NetInfo retry work
-or Phase 1.8's filter sheet.
+**Why (still) deferred:** the filter sheet is §22 Phase 1.8 video-management
+scope; the processing banner needs a real upload-status signal (Phase 1.4
+NetInfo retry work). Bundling either now mixes phases.
 
-**Revisit when:** Library has enough rows that "find the swing from
-two weeks ago" matters (search/filter), or when the upload queue surfaces
-a visible state (processing banner — likely Phase 1.4 follow-up).
+**Revisit when:** the filter sheet → Phase 1.8; the banner → when the upload
+queue exposes a visible in-flight state.
 
 **What to do at revisit:**
-1. Search: controlled TextInput → debounce → `videos.filter` over
-   title/club_type (client-side is fine until row counts exceed ~500)
-2. Filter chips: lift selected filter into local `useState`, derive
-   visible list with `useMemo`
-3. Processing banner: extend `useUploadQueueBootstrap` to expose an
-   "in-flight count" signal, render an info row above the grid
+1. Filter sheet: build the Phase 1.8 `FilterSheet`, open it from the sliders
+   button (`onPressMoreFilters` in `LibraryScreen`), and feed its selections
+   into `filterVideos` (extend `LibraryFilter` beyond the four quick chips).
+2. Processing banner: extend `useUploadQueueBootstrap` to expose an
+   "in-flight count" signal, render an info row above the grid.
 
 ---
 
