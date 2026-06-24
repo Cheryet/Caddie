@@ -33,8 +33,8 @@ import {
   type SkillLevel,
 } from '@/features/onboarding/components/SkillSegmented';
 import { markOnboarded } from '@/features/onboarding/onboardingStore';
+import { parseHandicap } from '@/features/profile/handicap';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { loadProfilePrefs, setHandicapPref } from '@/features/profile/profilePrefs';
 import {
   loadDefaultCameraAngle,
   loadDefaultSwingHand,
@@ -50,7 +50,7 @@ export function OnboardingScreen() {
   const { updateProfile } = useProfile();
 
   const [name, setName] = useState('');
-  const [handicap, setHandicap] = useState(() => loadProfilePrefs().handicap);
+  const [handicap, setHandicap] = useState('');
   const [hand, setHand] = useState<SwingHand>(loadDefaultSwingHand);
   const [skill, setSkill] = useState<SkillLevel>('intermediate');
   const [angle, setAngle] = useState<CameraAngle>(loadDefaultCameraAngle);
@@ -60,9 +60,9 @@ export function OnboardingScreen() {
 
   const finish = () => {
     if (!userId) return;
-    // Persist the device-local prefs first, then mark onboarded (which unmounts
-    // this screen). Capture mirror for hand is handled by updateProfile.
-    setHandicapPref(handicap.trim());
+    // Persist the device-local capture default first, then mark onboarded
+    // (which unmounts this screen). Capture mirror for hand is handled by
+    // updateProfile; handicap is written to the profile in handleGetStarted.
     setDefaultCameraAngle(angle);
     markOnboarded(userId);
   };
@@ -70,10 +70,14 @@ export function OnboardingScreen() {
   const handleGetStarted = async () => {
     if (!canSubmit) return;
     setIsSaving(true);
+    // Only send a handicap when it parses to a valid value; an empty or
+    // malformed optional field is simply left unset.
+    const parsedHandicap = parseHandicap(handicap);
     const ok = await updateProfile({
       displayName: name.trim(),
       swingHand: hand,
       skillLevel: skill,
+      ...(typeof parsedHandicap === 'number' ? { handicap: parsedHandicap } : {}),
     });
     if (!ok) {
       setIsSaving(false); // updateProfile already toasted

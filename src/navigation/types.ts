@@ -79,6 +79,12 @@ export type RootStackParamList = {
   // Both optional — Comparison can be entered empty (pick both swings on
   // the screen) or pre-seeded with one/both (Phase 5.1).
   Comparison: { videoIdA?: string; videoIdB?: string } | undefined;
+  // Profile edit sub-pages — pushed forms presented over the tabs (so the
+  // custom tab bar is hidden) with a Cancel/Save header. See Design § edit
+  // sub-pages.
+  EditName: undefined;
+  ChangePassword: undefined;
+  RedeemCode: undefined;
 };
 
 // ───── Screen prop helpers ─────

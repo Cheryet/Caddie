@@ -30,6 +30,8 @@ export type AuthErrorCode =
   | 'user_already_exists'
   | 'invalid_otp'
   | 'rate_limited'
+  | 'same_password'
+  | 'weak_password'
   | 'network'
   | 'unknown';
 
@@ -56,6 +58,10 @@ function mapError(err: SupabaseAuthError | null | undefined): AuthError | null {
     case 'over_email_send_rate_limit':
     case 'over_request_rate_limit':
       return { code: 'rate_limited', message: 'Too many attempts. Try again in a minute.' };
+    case 'same_password':
+      return { code: 'same_password', message: 'New password must be different from your current one.' };
+    case 'weak_password':
+      return { code: 'weak_password', message: 'That password is too weak. Try a longer one.' };
     default: {
       // No code — fall back to network detection by message.
       const msg = err.message ?? '';
@@ -160,6 +166,21 @@ export async function verifyOtp(
   const mapped = mapError(error);
   if (mapped) return fail(mapped);
   return ok({ user: data.user!, session: data.session! });
+}
+
+/**
+ * Set a new password for the already-signed-in user.
+ *
+ * `updateUser` does NOT require the current password — the session alone
+ * authorises it. ChangePasswordScreen therefore re-verifies the current
+ * password with signInWithPassword first (the design's "Current password"
+ * field), and only calls this on success.
+ */
+export async function updatePassword(newPassword: string): Promise<AuthResult<true>> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  const mapped = mapError(error);
+  if (mapped) return fail(mapped);
+  return ok(true);
 }
 
 export async function signOut(): Promise<AuthResult<true>> {

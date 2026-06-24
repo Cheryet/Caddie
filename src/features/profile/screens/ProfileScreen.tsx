@@ -4,15 +4,17 @@
  * scroll matching Design §06: identity, subscription, account, preferences,
  * notifications, support, sign-out, version.
  *
- * Wired for real this phase: dominant hand (→ profiles.swing_hand + capture
- * default), default camera angle + club (→ MMKV capture defaults), subscription
- * (Manage / Upgrade), Help + Privacy links, sign-out. Built-but-not-yet-wired
- * (local MMKV via useProfilePrefs / "coming soon" toasts): notification +
- * auto-analyse/pose toggles, handicap, promo, password, name edit, avatar.
+ * Wired for real: dominant hand (→ profiles.swing_hand + capture default),
+ * handicap (→ profiles.handicap), default camera angle + club (→ MMKV capture
+ * defaults), subscription (Manage / Upgrade), Help + Privacy links, sign-out,
+ * and the pushed edit sub-pages — name (EditName), password (ChangePassword),
+ * and promo/gift codes (RedeemCode). Built-but-not-yet-wired (local MMKV via
+ * useProfilePrefs / "coming soon" toasts): notification + auto-analyse/pose
+ * toggles, the account-settings header button, avatar.
  * Composition only — state lives in useProfile / useProfilePrefs.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -38,6 +40,7 @@ import type { CameraAngle, SwingHand } from '@/constants/camera';
 import type { ClubType } from '@/constants/clubs';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { ClubPickerSheet } from '@/features/profile/components/ClubPickerSheet';
+import { formatHandicap, parseHandicap } from '@/features/profile/handicap';
 import {
   BellIcon,
   CameraIcon,
@@ -75,11 +78,13 @@ import {
 } from '@/utils/captureDefaults';
 import { colors, layout, spacing, typography } from '@/theme';
 
-export function ProfileScreen() {
+import type { ProfileStackScreenProps } from '@/navigation/types';
+
+export function ProfileScreen({ navigation }: ProfileStackScreenProps<'Profile'>) {
   const insets = useSafeAreaInsets();
   const profile = useProfile();
   const { isPro } = useSubscription();
-  const { prefs, toggle, setHandicap } = useProfilePrefs();
+  const { prefs, toggle } = useProfilePrefs();
   const { signOut } = useAuth();
 
   const [angle, setAngle] = useState<CameraAngle>(loadDefaultCameraAngle);
@@ -132,9 +137,10 @@ export function ProfileScreen() {
 
   const name = profile.displayName || profile.username || 'Golfer';
   const handLabel = profile.swingHand === 'left' ? 'Left-handed' : 'Right-handed';
-  const subtitle = prefs.handicap
-    ? `${prefs.handicap} handicap · ${handLabel.toLowerCase()}`
-    : handLabel;
+  const subtitle =
+    profile.handicap != null
+      ? `${formatHandicap(profile.handicap)} handicap · ${handLabel.toLowerCase()}`
+      : handLabel;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -160,7 +166,7 @@ export function ProfileScreen() {
           email={profile.email}
           subtitle={subtitle}
           avatarUrl={profile.avatarUrl}
-          onEdit={comingSoon('Profile editing')}
+          onEdit={() => navigation.navigate('EditName')}
         />
 
         <SubscriptionCard
@@ -174,7 +180,7 @@ export function ProfileScreen() {
             <SettingsRow
               icon={<TicketIcon />}
               label="Redeem promo code"
-              onPress={comingSoon('Promo codes')}
+              onPress={() => navigation.navigate('RedeemCode')}
             />
           </SettingsGroup>
         </View>
@@ -185,20 +191,20 @@ export function ProfileScreen() {
             icon={<UserIcon />}
             label="Full name"
             value={name}
-            onPress={comingSoon('Editing your name')}
+            onPress={() => navigation.navigate('EditName')}
           />
           <SettingsRow icon={<MailIcon />} label="Email" value={profile.email ?? '—'} />
           <SettingsRow
             icon={<LockIcon />}
             label="Password"
             value="Change"
-            onPress={comingSoon('Changing your password')}
+            onPress={() => navigation.navigate('ChangePassword')}
           />
           <SettingsRow
             icon={<FlagIcon />}
             label="Handicap"
             right={
-              <HandicapInput value={prefs.handicap} onChange={setHandicap} />
+              <HandicapInput value={profile.handicap} onCommit={profile.updateHandicap} />
             }
           />
         </SettingsGroup>
@@ -325,17 +331,46 @@ function HandControl({
   );
 }
 
+/**
+ * Inline handicap field. Holds the raw text locally so typing feels native,
+ * then commits the parsed value to `profiles.handicap` on blur/submit —
+ * invalid or unchanged input never hits the network (see handicap.ts).
+ */
 function HandicapInput({
   value,
-  onChange,
+  onCommit,
 }: {
-  value: string;
-  onChange: (next: string) => void;
+  value: number | null;
+  onCommit: (next: number | null) => void;
 }) {
+  const [text, setText] = useState(() => formatHandicap(value));
+  const focusedRef = useRef(false);
+
+  // Mirror external changes (initial load, optimistic revert) when not editing.
+  useEffect(() => {
+    if (!focusedRef.current) setText(formatHandicap(value));
+  }, [value]);
+
+  const commit = () => {
+    focusedRef.current = false;
+    const parsed = parseHandicap(text);
+    if (parsed === undefined || parsed === value) {
+      // Invalid or unchanged — snap back to the stored value's canonical form.
+      setText(formatHandicap(value));
+      return;
+    }
+    onCommit(parsed);
+  };
+
   return (
     <TextInput
-      value={value}
-      onChangeText={onChange}
+      value={text}
+      onChangeText={setText}
+      onFocus={() => {
+        focusedRef.current = true;
+      }}
+      onBlur={commit}
+      onSubmitEditing={commit}
       placeholder="Add"
       placeholderTextColor={colors.text.tertiary}
       keyboardType="decimal-pad"

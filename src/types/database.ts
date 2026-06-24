@@ -98,6 +98,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
+          handicap: number | null
           id: string
           is_pro: boolean | null
           last_active: string | null
@@ -111,6 +112,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          handicap?: number | null
           id: string
           is_pro?: boolean | null
           last_active?: string | null
@@ -124,6 +126,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          handicap?: number | null
           id?: string
           is_pro?: boolean | null
           last_active?: string | null

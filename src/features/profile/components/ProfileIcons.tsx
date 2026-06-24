@@ -251,6 +251,37 @@ export function ShieldIcon({
   );
 }
 
+/** Show-password eye — path verbatim from the Change-password design field. */
+export function EyeIcon({
+  size = 20,
+  color = colors.text.secondary,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" {...strokeProps(color)} />
+      <Circle cx={12} cy={12} r={3} {...strokeProps(color)} />
+    </Svg>
+  );
+}
+
+/** Hide-password eye — the design only shows the open eye, so the struck-through
+ *  variant uses the matching Feather "eye-off" the open eye is drawn from. */
+export function EyeOffIcon({
+  size = 20,
+  color = colors.text.secondary,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
+        {...strokeProps(color)}
+      />
+      <Path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" {...strokeProps(color)} />
+      <Path d="M3 3l18 18" {...strokeProps(color)} />
+    </Svg>
+  );
+}
+
 export function ChevronIcon({
   size = 18,
   color = colors.text.tertiary,

@@ -507,6 +507,7 @@ display_name  text
 avatar_url    text
 skill_level   text check (skill_level in ('beginner','intermediate','advanced'))
 swing_hand    text check (swing_hand in ('right','left')) default 'right'
+handicap      numeric check (handicap is null or handicap between -10 and 54)
 is_pro        boolean default false
 analyses_run  integer default 0
 streak_days   integer default 0

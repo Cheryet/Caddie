@@ -23,6 +23,9 @@ import { ComparisonScreen } from '@/features/comparison/screens/ComparisonScreen
 import { OnboardingScreen } from '@/features/onboarding/screens/OnboardingScreen';
 import { useIsOnboarded } from '@/features/onboarding/onboardingStore';
 import { PlaybackScreen } from '@/features/playback/screens/PlaybackScreen';
+import { ChangePasswordScreen } from '@/features/profile/screens/ChangePasswordScreen';
+import { EditNameScreen } from '@/features/profile/screens/EditNameScreen';
+import { RedeemCodeScreen } from '@/features/profile/screens/RedeemCodeScreen';
 import { useAppStore } from '@/store/useAppStore';
 import { colors } from '@/theme';
 
@@ -92,6 +95,12 @@ export function RootNavigator() {
                 }}
               />
               <Stack.Screen name="Comparison" component={ComparisonScreen} />
+              {/* Profile edit sub-pages — modal-presented so the custom tab
+                  bar is hidden and the keyboard has room (Design § edit
+                  sub-pages). */}
+              <Stack.Screen name="EditName" component={EditNameScreen} />
+              <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+              <Stack.Screen name="RedeemCode" component={RedeemCodeScreen} />
             </Stack.Group>
           </>
         )}

@@ -40,6 +40,14 @@ interface UseAuthReturn {
   requestMagicLink: (email: string) => Promise<boolean>;
   verifyMagicCode: (email: string, code: string, mode: VerifyMode) => Promise<boolean>;
   resendCode: (email: string, mode: VerifyMode) => Promise<boolean>;
+  /**
+   * Change the signed-in user's password. Re-verifies `currentPassword`
+   * first (updateUser alone doesn't), then sets the new one. Resolves to
+   * `null` on success or the mapped AuthError on failure — a
+   * `invalid_credentials` code means the current password was wrong, which
+   * the screen surfaces inline on that field.
+   */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<AuthError | null>;
   signOut: () => Promise<boolean>;
 }
 
@@ -131,6 +139,43 @@ export function useAuth(): UseAuthReturn {
     [],
   );
 
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<AuthError | null> => {
+      // Read email imperatively so changePassword isn't re-created on every
+      // user change and we don't need it as a dependency.
+      const email = useAppStore.getState().user?.email;
+      if (!email) {
+        const err: AuthError = { code: 'unknown', message: "You're not signed in." };
+        setError(err);
+        return err;
+      }
+
+      setIsSubmitting(true);
+      setError(null);
+
+      // Verify the current password by re-authenticating the same user.
+      const verify = await authService.signInWithPassword(email, currentPassword);
+      if (verify.error) {
+        setIsSubmitting(false);
+        const err: AuthError =
+          verify.error.code === 'invalid_credentials'
+            ? { code: 'invalid_credentials', message: 'Current password is incorrect.' }
+            : verify.error;
+        setError(err);
+        return err;
+      }
+
+      const updated = await authService.updatePassword(newPassword);
+      setIsSubmitting(false);
+      if (updated.error) {
+        setError(updated.error);
+        return updated.error;
+      }
+      return null;
+    },
+    [],
+  );
+
   const signOut = useCallback(async (): Promise<boolean> => {
     setIsSubmitting(true);
     setError(null);
@@ -153,6 +198,7 @@ export function useAuth(): UseAuthReturn {
     requestMagicLink,
     verifyMagicCode,
     resendCode,
+    changePassword,
     signOut,
   };
 }

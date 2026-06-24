@@ -168,6 +168,30 @@ export async function purchaseProPackage(
 }
 
 /**
+ * Present Apple's native offer-code redemption sheet (App Store). This is
+ * the only redemption path Caddie ships — PROJECT_SPEC §17 forbids a custom
+ * coupon system, so the RedeemCodeScreen hands off to StoreKit here.
+ *
+ * Returns `true` once the sheet is presented; `false` when the SDK isn't
+ * configured (Simulator without an API key) or the call throws. A real
+ * redemption updates entitlement out-of-band, so callers refresh Pro status
+ * (useSubscription) after this resolves.
+ */
+export async function presentCodeRedemption(): Promise<boolean> {
+  const ready = initPromise ? await initPromise : false;
+  if (!ready) return false;
+  try {
+    await Purchases.presentCodeRedemptionSheet();
+    return true;
+  } catch (err) {
+    if (__DEV__) {
+      console.warn('[revenuecat] presentCodeRedemptionSheet failed', err);
+    }
+    return false;
+  }
+}
+
+/**
  * Restore prior purchases. Returns whether caddie_pro is active afterwards.
  * False on any SDK error or when there's nothing to restore.
  */
