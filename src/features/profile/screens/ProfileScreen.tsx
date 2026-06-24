@@ -14,7 +14,7 @@
  * Composition only — state lives in useProfile / useProfilePrefs.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -92,6 +92,9 @@ export function ProfileScreen({ navigation }: ProfileStackScreenProps<'Profile'>
   const [clubSheet, setClubSheet] = useState(false);
   const [signOutSheet, setSignOutSheet] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  // So tapping anywhere on the Handicap row focuses its inline field (and
+  // raises the numeric keyboard), not just the small input on the right edge.
+  const handicapInputRef = useRef<TextInput>(null);
 
   const comingSoon = useCallback(
     (what: string) => () =>
@@ -203,8 +206,13 @@ export function ProfileScreen({ navigation }: ProfileStackScreenProps<'Profile'>
           <SettingsRow
             icon={<FlagIcon />}
             label="Handicap"
+            onPress={() => handicapInputRef.current?.focus()}
             right={
-              <HandicapInput value={profile.handicap} onCommit={profile.updateHandicap} />
+              <HandicapInput
+                ref={handicapInputRef}
+                value={profile.handicap}
+                onCommit={profile.updateHandicap}
+              />
             }
           />
         </SettingsGroup>
@@ -336,13 +344,13 @@ function HandControl({
  * then commits the parsed value to `profiles.handicap` on blur/submit —
  * invalid or unchanged input never hits the network (see handicap.ts).
  */
-function HandicapInput({
-  value,
-  onCommit,
-}: {
-  value: number | null;
-  onCommit: (next: number | null) => void;
-}) {
+const HandicapInput = forwardRef<
+  TextInput,
+  {
+    value: number | null;
+    onCommit: (next: number | null) => void;
+  }
+>(function HandicapInputImpl({ value, onCommit }, ref) {
   const [text, setText] = useState(() => formatHandicap(value));
   const focusedRef = useRef(false);
 
@@ -364,6 +372,7 @@ function HandicapInput({
 
   return (
     <TextInput
+      ref={ref}
       value={text}
       onChangeText={setText}
       onFocus={() => {
@@ -380,7 +389,7 @@ function HandicapInput({
       style={styles.handicapInput}
     />
   );
-}
+});
 
 const styles = StyleSheet.create({
   root: {
