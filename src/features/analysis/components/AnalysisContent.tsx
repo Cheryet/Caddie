@@ -22,7 +22,7 @@ import { DrillCard } from '@/features/analysis/components/DrillCard';
 import { IssueList } from '@/features/analysis/components/IssueList';
 import { SectionLabel } from '@/features/analysis/components/SectionLabel';
 import { SwingScore } from '@/features/analysis/components/SwingScore';
-import type { SwingAnalysis } from '@/types/analysis';
+import type { SwingAnalysis, SwingIssue } from '@/types/analysis';
 import { colors, layout, spacing, typography } from '@/theme';
 
 interface AnalysisContentProps {
@@ -31,12 +31,15 @@ interface AnalysisContentProps {
   subtitle?: string;
   /** Supplied when the drill can be launched — gates the drill's "Start". */
   onStartDrill?: () => void;
+  /** Tapping an issue opens its detail page (frame + insight). */
+  onSelectIssue?: (issue: SwingIssue) => void;
 }
 
 export function AnalysisContent({
   analysis,
   subtitle,
   onStartDrill,
+  onSelectIssue,
 }: AnalysisContentProps) {
   const insets = useSafeAreaInsets();
 
@@ -56,7 +59,7 @@ export function AnalysisContent({
         <CoachingCard summary={analysis.summary} />
       </View>
 
-      <IssueList issues={analysis.issues} />
+      <IssueList issues={analysis.issues} onSelectIssue={onSelectIssue} />
 
       {analysis.positives.length > 0 ? (
         <View>

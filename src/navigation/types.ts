@@ -13,6 +13,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 
+import type { SwingIssue } from '@/types/analysis';
+
 // ───── Auth stack (rendered when no session) ─────
 // Single combined Auth screen toggles between sign-in / create-account
 // modes; Verify takes the email so the user doesn't have to retype it
@@ -70,6 +72,10 @@ export type RootStackParamList = {
   Camera: undefined;
   Playback: PlaybackParams;
   Analysis: { videoId: string };
+  // Drill-down from an analysis issue: shows the referenced swing frame +
+  // the full insight. `issue` is plain JSON (carried so the text renders
+  // instantly, with no re-fetch); `videoId` locates the video for the frame.
+  InsightDetail: { videoId: string; issue: SwingIssue };
   // Both optional — Comparison can be entered empty (pick both swings on
   // the screen) or pre-seeded with one/both (Phase 5.1).
   Comparison: { videoIdA?: string; videoIdB?: string } | undefined;

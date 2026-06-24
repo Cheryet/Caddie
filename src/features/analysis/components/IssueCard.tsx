@@ -1,68 +1,74 @@
 /**
  * IssueCard — Feature component
- * One ranked swing fault: a severity-coloured icon tile, the fault name,
- * what's happening (description), the actionable correction (fix), and a
- * severity Badge. Layout + the icon tile are verbatim from Design/Caddie
- * Screens.dc.html §03 (lines 507–523).
+ * One ranked swing fault as a scannable headline row: a severity-coloured
+ * glyph tile, the fault name, and a severity Badge. When tappable it gains a
+ * disclosure chevron and opens the InsightDetailScreen, where the full
+ * description and fix live alongside the swing frame.
  *
- * Deviation from the PROJECT_SPEC §22 4.3 bullet ("frame thumbnail"): the
- * high-fidelity prototype uses a severity glyph tile instead of a frame
- * thumbnail, so we follow the prototype (TODO.md). `frameIndex` is carried
- * on the data for the Phase 4.4 thumbnail wiring.
+ * The description and fix are deliberately NOT shown here — keeping the card to
+ * a headline removes the cramped, duplicated prose and gives the report a clear
+ * visual hierarchy (a product decision that departs from the Design/ §03 inline
+ * card; the full text is always one tap away on the detail screen).
  *
- * Colours reuse the shared BADGE_PALETTE (AI_IMPLEMENTATION_GUIDE §2 —
- * reuse before create) so the icon tile + Badge stay in lockstep. Gold is
- * deliberately absent — it's reserved for the screen's single CTA.
+ * Colours reuse the shared BADGE_PALETTE (AI_IMPLEMENTATION_GUIDE §2 — reuse
+ * before create) so the glyph tile + Badge stay in lockstep. Gold is
+ * deliberately absent — it's reserved for the screen's single CTA. `frameIndex`
+ * rides along on the issue data so the detail screen can locate the frame.
  *
  * Part of: src/features/analysis/
  */
 
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BADGE_PALETTE, Badge, type BadgeVariant } from '@/components/ui';
-import { SeverityIcon } from '@/features/analysis/components/AnalysisIcons';
-import type { IssueSeverity, SwingIssue } from '@/types/analysis';
+import { BADGE_PALETTE, Badge } from '@/components/ui';
+import {
+  ForwardChevronIcon,
+  SeverityIcon,
+} from '@/features/analysis/components/AnalysisIcons';
+import { SEVERITY_LABEL, SEVERITY_VARIANT } from '@/features/analysis/severity';
+import type { SwingIssue } from '@/types/analysis';
 import { colors, layout, spacing, typography } from '@/theme';
-
-const SEVERITY_VARIANT: Record<IssueSeverity, BadgeVariant> = {
-  minor: 'success',
-  moderate: 'warning',
-  major: 'error',
-};
-
-const SEVERITY_LABEL: Record<IssueSeverity, string> = {
-  minor: 'Minor',
-  moderate: 'Moderate',
-  major: 'Major',
-};
 
 interface IssueCardProps {
   issue: SwingIssue;
+  /** When set, the whole card becomes a button (opens the insight detail) and
+   *  shows a disclosure chevron. Absent → a static, non-interactive row. */
+  onPress?: () => void;
 }
 
-export function IssueCard({ issue }: IssueCardProps) {
+export function IssueCard({ issue, onPress }: IssueCardProps) {
   const variant = SEVERITY_VARIANT[issue.severity];
   const palette = BADGE_PALETTE[variant];
 
-  return (
-    <View style={styles.card}>
+  const content = (
+    <>
       <View style={[styles.iconTile, { backgroundColor: palette.bg }]}>
         <SeverityIcon severity={issue.severity} color={palette.text} size={16} />
       </View>
 
-      <View style={styles.body}>
-        <Text style={styles.name}>{issue.name}</Text>
-        <Text style={styles.description}>{issue.description}</Text>
-        <View style={styles.fixRow}>
-          <Text style={styles.fixLabel}>Fix</Text>
-          <Text style={styles.fixText}>{issue.fix}</Text>
-        </View>
-      </View>
+      <Text style={styles.name}>{issue.name}</Text>
 
-      <View style={styles.badge}>
+      <View style={styles.trailing}>
         <Badge label={SEVERITY_LABEL[issue.severity]} variant={variant} size="sm" />
+        {onPress ? (
+          <ForwardChevronIcon color={colors.text.tertiary} size={18} />
+        ) : null}
       </View>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={styles.card}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`See ${issue.name} in detail`}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+      {content}
+    </Pressable>
   );
 }
 
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: spacing[3],
-    alignItems: 'flex-start',
+    alignItems: 'center',
     padding: 13,
     borderRadius: layout.borderRadius.lg,
     backgroundColor: colors.bg.elevated,
@@ -84,42 +90,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: {
-    flex: 1,
-    minWidth: 0,
-  },
   name: {
     ...typography.bodyStrong,
+    flex: 1,
     letterSpacing: -0.1,
   },
-  description: {
-    ...typography.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.text.secondary,
-    marginTop: 3,
+  cardPressed: {
+    backgroundColor: colors.bg.overlay,
   },
-  fixRow: {
+  // Right column: the severity badge, plus a disclosure chevron when tappable.
+  trailing: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: spacing[2],
+    alignItems: 'center',
     gap: spacing[2],
-  },
-  fixLabel: {
-    ...typography.overline,
-    fontSize: 10,
-    color: colors.text.tertiary,
-    marginTop: 1,
-  },
-  fixText: {
-    ...typography.body,
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.text.primary,
-  },
-  // Reserve a little space so a long name never collides with the badge.
-  badge: {
-    alignSelf: 'center',
   },
 });

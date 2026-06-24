@@ -17,6 +17,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AnalysisScreen } from '@/features/analysis/screens/AnalysisScreen';
+import { InsightDetailScreen } from '@/features/analysis/screens/InsightDetailScreen';
 import { CameraScreen } from '@/features/camera/screens/CameraScreen';
 import { ComparisonScreen } from '@/features/comparison/screens/ComparisonScreen';
 import { OnboardingScreen } from '@/features/onboarding/screens/OnboardingScreen';
@@ -78,6 +79,18 @@ export function RootNavigator() {
               <Stack.Screen name="Camera" component={CameraScreen} />
               <Stack.Screen name="Playback" component={PlaybackScreen} />
               <Stack.Screen name="Analysis" component={AnalysisScreen} />
+              {/* Drill-down off the report. Analysis is a fullScreenModal, so a
+                  `card` here would push onto the base stack *behind* it and never
+                  be seen — it must be presented as its own modal on top. The
+                  right-slide keeps the "push" feel rather than a bottom sheet. */}
+              <Stack.Screen
+                name="InsightDetail"
+                component={InsightDetailScreen}
+                options={{
+                  presentation: 'fullScreenModal',
+                  animation: 'slide_from_right',
+                }}
+              />
               <Stack.Screen name="Comparison" component={ComparisonScreen} />
             </Stack.Group>
           </>

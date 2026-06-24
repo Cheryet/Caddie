@@ -29,6 +29,7 @@ import { useAnalysis } from '@/features/analysis/hooks/useAnalysis';
 import type { AnalysisErrorCode } from '@/features/analysis/parseAnalysis';
 import { useSubscription } from '@/features/subscription/hooks/useSubscription';
 import type { RootStackScreenProps } from '@/navigation/types';
+import type { SwingIssue } from '@/types/analysis';
 import { colors, spacing, typography } from '@/theme';
 
 export function AnalysisScreen({
@@ -37,10 +38,18 @@ export function AnalysisScreen({
 }: RootStackScreenProps<'Analysis'>) {
   const insets = useSafeAreaInsets();
   const { isPro } = useSubscription();
+  const { videoId } = route.params;
 
   const handleClose = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  const handleSelectIssue = useCallback(
+    (issue: SwingIssue) => {
+      navigation.navigate('InsightDetail', { videoId, issue });
+    },
+    [navigation, videoId],
+  );
 
   // Free users never run the analysis pipeline — the gate replaces it.
   if (!isPro) {
@@ -56,8 +65,9 @@ export function AnalysisScreen({
 
   return (
     <AnalysisReport
-      videoId={route.params.videoId}
+      videoId={videoId}
       onClose={handleClose}
+      onSelectIssue={handleSelectIssue}
       topInset={insets.top}
     />
   );
@@ -68,10 +78,16 @@ export function AnalysisScreen({
 interface AnalysisReportProps {
   videoId: string;
   onClose: () => void;
+  onSelectIssue: (issue: SwingIssue) => void;
   topInset: number;
 }
 
-function AnalysisReport({ videoId, onClose, topInset }: AnalysisReportProps) {
+function AnalysisReport({
+  videoId,
+  onClose,
+  onSelectIssue,
+  topInset,
+}: AnalysisReportProps) {
   const { status, analysis, subtitle, error, refresh } = useAnalysis(videoId);
 
   const handleShare = useCallback(() => {
@@ -106,6 +122,7 @@ function AnalysisReport({ videoId, onClose, topInset }: AnalysisReportProps) {
           analysis={analysis}
           subtitle={subtitle ?? undefined}
           onStartDrill={handleStartDrill}
+          onSelectIssue={onSelectIssue}
         />
       ) : null}
     </View>

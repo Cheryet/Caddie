@@ -66,6 +66,22 @@ export function BackChevronIcon({ color, size = 22 }: IconProps) {
   );
 }
 
+/** Forward chevron — disclosure affordance on a tappable IssueCard. Mirror
+ *  of BackChevronIcon so the stroke weight matches the icon family. */
+export function ForwardChevronIcon({ color, size = 18 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Polyline
+        points="9 5 16 12 9 19"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 /** Share / export — screen header right action. */
 export function ShareIcon({ color, size = 18 }: IconProps) {
   return (

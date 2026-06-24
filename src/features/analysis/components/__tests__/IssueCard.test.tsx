@@ -4,7 +4,7 @@
  * that all three severities render without error (each draws its own glyph).
  */
 
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import { IssueCard } from '../IssueCard';
 import type { IssueSeverity, SwingIssue } from '@/types/analysis';
@@ -20,15 +20,16 @@ function makeIssue(severity: IssueSeverity): SwingIssue {
 }
 
 describe('IssueCard', () => {
-  it('renders name, description and fix', () => {
+  it('renders the fault name', () => {
     const { getByText } = render(<IssueCard issue={makeIssue('major')} />);
     expect(getByText('Flying trail elbow')).toBeTruthy();
-    expect(
-      getByText('Your trail elbow separates at the top of the backswing.'),
-    ).toBeTruthy();
-    expect(
-      getByText('Feel it stay connected to your side coming down.'),
-    ).toBeTruthy();
+  });
+
+  it('keeps the description and fix off the card (they live on the detail screen)', () => {
+    const issue = makeIssue('major');
+    const { queryByText } = render(<IssueCard issue={issue} />);
+    expect(queryByText(issue.description)).toBeNull();
+    expect(queryByText(issue.fix)).toBeNull();
   });
 
   it.each<[IssueSeverity, string]>([
@@ -43,5 +44,19 @@ describe('IssueCard', () => {
   it('renders a severity glyph (svg)', () => {
     const { getAllByTestId } = render(<IssueCard issue={makeIssue('minor')} />);
     expect(getAllByTestId('svg-Svg').length).toBeGreaterThan(0);
+  });
+
+  it('is a static row (no button) without onPress', () => {
+    const { queryByRole } = render(<IssueCard issue={makeIssue('major')} />);
+    expect(queryByRole('button')).toBeNull();
+  });
+
+  it('becomes a button and fires onPress when tappable', () => {
+    const onPress = jest.fn();
+    const { getByRole } = render(
+      <IssueCard issue={makeIssue('major')} onPress={onPress} />,
+    );
+    fireEvent.press(getByRole('button'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,7 +6,7 @@
  */
 
 import type { ReactElement } from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnalysisContent } from '../AnalysisContent';
@@ -53,5 +53,18 @@ describe('AnalysisContent', () => {
       <AnalysisContent analysis={MOCK_ANALYSIS} onStartDrill={jest.fn()} />,
     );
     expect(getByText('Start')).toBeTruthy();
+  });
+
+  it('calls onSelectIssue when an issue is tapped', () => {
+    const onSelectIssue = jest.fn();
+    const { getByLabelText } = renderS(
+      <AnalysisContent
+        analysis={MOCK_ANALYSIS}
+        onSelectIssue={onSelectIssue}
+      />,
+    );
+    const issue = MOCK_ANALYSIS.issues[0]!;
+    fireEvent.press(getByLabelText(`See ${issue.name} in detail`));
+    expect(onSelectIssue).toHaveBeenCalledWith(issue);
   });
 });

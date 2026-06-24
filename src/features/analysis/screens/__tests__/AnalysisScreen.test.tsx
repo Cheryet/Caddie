@@ -63,8 +63,9 @@ beforeEach(() => {
 
 function renderScreen() {
   const goBack = jest.fn();
+  const navigate = jest.fn();
   const props = {
-    navigation: { goBack },
+    navigation: { goBack, navigate },
     route: { params: { videoId: 'video-1' } },
   } as unknown as RootStackScreenProps<'Analysis'>;
   const view = render(
@@ -76,7 +77,7 @@ function renderScreen() {
       <AnalysisScreen {...props} />
     </SafeAreaProvider>,
   );
-  return { ...view, goBack };
+  return { ...view, goBack, navigate };
 }
 
 describe('AnalysisScreen', () => {
@@ -133,5 +134,15 @@ describe('AnalysisScreen', () => {
     const { getByLabelText, goBack } = renderScreen();
     fireEvent.press(getByLabelText('Close analysis'));
     expect(goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates to the insight detail when an issue is tapped', () => {
+    const { getByLabelText, navigate } = renderScreen();
+    const issue = MOCK_ANALYSIS.issues[0]!;
+    fireEvent.press(getByLabelText(`See ${issue.name} in detail`));
+    expect(navigate).toHaveBeenCalledWith('InsightDetail', {
+      videoId: 'video-1',
+      issue,
+    });
   });
 });

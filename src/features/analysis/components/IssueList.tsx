@@ -40,9 +40,11 @@ export function orderIssuesBySeverity(issues: SwingIssue[]): SwingIssue[] {
 
 interface IssueListProps {
   issues: SwingIssue[];
+  /** Tapping an issue opens its detail page. Omitted → static cards. */
+  onSelectIssue?: (issue: SwingIssue) => void;
 }
 
-export function IssueList({ issues }: IssueListProps) {
+export function IssueList({ issues, onSelectIssue }: IssueListProps) {
   if (issues.length === 0) return null;
 
   const ordered = orderIssuesBySeverity(issues);
@@ -52,7 +54,11 @@ export function IssueList({ issues }: IssueListProps) {
       <SectionLabel>What to work on</SectionLabel>
       <View style={styles.list}>
         {ordered.map((issue, index) => (
-          <IssueCard key={`${issue.name}-${index}`} issue={issue} />
+          <IssueCard
+            key={`${issue.name}-${index}`}
+            issue={issue}
+            onPress={onSelectIssue ? () => onSelectIssue(issue) : undefined}
+          />
         ))}
       </View>
     </View>
