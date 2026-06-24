@@ -17,8 +17,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FullWindowOverlay } from 'react-native-screens';
 import Animated, {
   Easing,
   runOnJS,
@@ -125,7 +126,7 @@ export function ToastHost(): React.ReactElement | null {
 
   const variantStyle = VARIANT_STYLES[state.variant ?? 'info'];
 
-  return (
+  const toast = (
     <Animated.View
       pointerEvents="none"
       style={[
@@ -145,6 +146,19 @@ export function ToastHost(): React.ReactElement | null {
         </Text>
       </View>
     </Animated.View>
+  );
+
+  // The host is mounted once at the app root, so a presented native modal
+  // (the fullScreenModal screens — Analysis/Playback/Camera/Comparison) sits
+  // *above* it and would hide the toast. FullWindowOverlay hoists the toast
+  // into a UIWindow above every view controller. Its container only captures
+  // touches that land on an interactive subview (RNSFullWindowOverlay hitTest)
+  // and the toast is pointerEvents="none", so nothing underneath is blocked.
+  // iOS-only — which is the only platform this app ships.
+  return Platform.OS === 'ios' ? (
+    <FullWindowOverlay>{toast}</FullWindowOverlay>
+  ) : (
+    toast
   );
 }
 
